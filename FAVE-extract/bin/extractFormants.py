@@ -74,7 +74,7 @@ import praat
 import esps
 import plotnik
 import cmu
-import vowel
+#import vowel
 
 import numpy as np
 
@@ -114,6 +114,9 @@ class Phone:
         self.pp = None  # preceding phone (Arpabet label)
         self.arpa = ''  # Arpabet coding WITHOUT stress digit
         self.stress = None  # stress digit
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.label)
 
 
 class Speaker:
