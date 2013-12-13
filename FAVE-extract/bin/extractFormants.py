@@ -922,11 +922,11 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         bandwidths = [fmt.bandwidths()]
         vm = measureVowel(p, w, formants, bandwidths, convertedTimes, intensity, measurementPointMethod,
             formantPredictionMethod, padBeg, padEnd, '', '')
-    
+
     os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
                           vowelWavFile + ' ' + str(vm.f1) + ' ' + str(vm.f2) + ' ' ' ' + str(vm.f3) + ' ' + str(vm.t-(vm.beg-padBeg)))
     voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
-    voice_qual_num = voice_qual_fi.readline().rstrip().split("\t")
+    voice_qual_num = voice_qual_fi.readline().rstrip("\n").split("\t")
     voice_qual_fi.close()
 
     vm.h1_hz = voice_qual_num[0]
@@ -1417,7 +1417,9 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
                                 'glide', 'pre_seg', 'fol_seg', 'context', 
                                 'vowel_index', 'pre_word_trans', 'word_trans',
-                                'fol_word_trans', 'h1_db', 'h2_db', 
+                                'fol_word_trans', 'h1_db', 'h1_hz', 'h2_db',
+                                'h2_hz', 'a1_db', 'a1_hz', 'a2_db', 'a2_hz',
+                                'a3_db','a2_hz',
                                 'F1@20%', 'F2@20%',
                                 'F1@35%','F2@35%', 'F1@50%', 'F2@50%', 
                                 'F1@65%','F2@65%', 'F1@80%', 'F2@80%']))
@@ -1467,7 +1469,9 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                  vm.pre_seg,
                                  vm.fol_seg, vm.context, vm.p_index, 
                                  vm.pre_word_trans, vm.word_trans, 
-                                 vm.fol_word_trans, vm.h1_db, vm.h2_db]))
+                                 vm.fol_word_trans, vm.h1_db, vm.h1_hz,
+                                 vm.h2_db, vm.h2_hz, vm.a1_db, vm.a1_hz,
+                                 vm.a2_db, vm.a2_hz, vm.a3_db, vm.a3_hz]))
             fw.write('\t')
                      # time of measurement, beginning and end of phone,
                      # duration, Plotnik environment codes, style coding, glide

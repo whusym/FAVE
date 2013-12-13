@@ -35,13 +35,13 @@ start_frame_real = Get frame from time... 'n_md'
 current_frame_int = round('start_frame_real')
 total_pitch_frames = Get number of frames
 
-while n_f0md < 0 & current_frame_int <= total_pitch_frames
+while n_f0md = undefined & current_frame_int <= total_pitch_frames
   new_frame = current_frame_int + 1
-  n_f0md = Get valye in frame... 'new_frame' Hertz
+  n_f0md = Get value in frame... 'new_frame' Hertz
   current_frame_int = new_frame
 endwhile
 
-if n_f0md < 0
+if n_f0md = undefined
   fileappend 'path$'.qual 'tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$'
 else
 
