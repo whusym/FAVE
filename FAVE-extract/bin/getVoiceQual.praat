@@ -45,38 +45,48 @@ if n_f0md = undefined
   fileappend 'path$'.qual 'tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$'
 else
 
-rn_f0md = round('n_f0md')
-p10_nf0md = 'n_f0md' / 10
-select 'ltas'
-lowerbh1 = 'n_f0md' - 'p10_nf0md'
-upperbh1 = 'n_f0md' + 'p10_nf0md'
-lowerbh2 = ('n_f0md' * 2) - ('p10_nf0md' * 2)
-upperbh2 = ('n_f0md' * 2) + ('p10_nf0md' * 2)
-h1db = Get maximum... 'lowerbh1' 'upperbh1' None
-h1hz = Get frequency of maximum... 'lowerbh1' 'upperbh1' None
-h2db = Get maximum... 'lowerbh2' 'upperbh2' None
-h2hz = Get frequency of maximum... 'lowerbh2' 'upperbh2' None
-rh1hz = round('h1hz')
-rh2hz = round('h2hz')
+  rn_f0md = round('n_f0md')
+  p10_nf0md = 'n_f0md' / 10
+  select 'ltas'
+  lowerbh1 = 'n_f0md' - 'p10_nf0md'
+  upperbh1 = 'n_f0md' + 'p10_nf0md'
+  lowerbh2 = ('n_f0md' * 2) - ('p10_nf0md' * 2)
+  upperbh2 = ('n_f0md' * 2) + ('p10_nf0md' * 2)
+  h1db = Get maximum... 'lowerbh1' 'upperbh1' None
+  h1hz = Get frequency of maximum... 'lowerbh1' 'upperbh1' None
+  h2db = Get maximum... 'lowerbh2' 'upperbh2' None
+  h2hz = Get frequency of maximum... 'lowerbh2' 'upperbh2' None
+  rh1hz = round('h1hz')
+  rh2hz = round('h2hz')
 
 
-# Get the a1, a2, a3 measurements.
+  # Get the a1, a2, a3 measurements.
 
-p20_f1hzpt = 'f1hzpt' / 5
-p10_f2hzpt = 'f2hzpt' / 10
-p10_f3hzpt = 'f3hzpt' / 10
-lowerba1 = 'f1hzpt' - 'p20_f1hzpt'
-upperba1 = 'f1hzpt' + 'p20_f1hzpt'
-lowerba2 = 'f2hzpt' - 'p10_f2hzpt'
-upperba2 = 'f2hzpt' + 'p10_f2hzpt'
-lowerba3 = 'f3hzpt' - 'p10_f3hzpt'
-upperba3 = 'f3hzpt' + 'p10_f3hzpt'
-a1db = Get maximum... 'lowerba1' 'upperba1' None
-a1hz = Get frequency of maximum... 'lowerba1' 'upperba1' None
-a2db = Get maximum... 'lowerba2' 'upperba2' None
-a2hz = Get frequency of maximum... 'lowerba2' 'upperba2' None
-a3db = Get maximum... 'lowerba3' 'upperba3' None
-a3hz = Get frequency of maximum... 'lowerba3' 'upperba3' None
+  p20_f1hzpt = 'f1hzpt' / 5
+  p10_f2hzpt = 'f2hzpt' / 10
 
-fileappend 'path$'.qual 'h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''a3db''tab$''a3hz'
+  lowerba1 = 'f1hzpt' - 'p20_f1hzpt'
+  upperba1 = 'f1hzpt' + 'p20_f1hzpt'
+  lowerba2 = 'f2hzpt' - 'p10_f2hzpt'
+  upperba2 = 'f2hzpt' + 'p10_f2hzpt'
+  a1db = Get maximum... 'lowerba1' 'upperba1' None
+  a1hz = Get frequency of maximum... 'lowerba1' 'upperba1' None
+  a2db = Get maximum... 'lowerba2' 'upperba2' None
+  a2hz = Get frequency of maximum... 'lowerba2' 'upperba2' None
+
+
+  if f3hzpt = undefined
+    fileappend 'path$'.qual 'h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''tab$'
+  else
+    p10_f3hzpt = 'f3hzpt' / 10  
+    lowerba3 = 'f3hzpt' - 'p10_f3hzpt'
+    upperba3 = 'f3hzpt' + 'p10_f3hzpt'
+    a3db = Get maximum... 'lowerba3' 'upperba3' None
+    a3hz = Get frequency of maximum... 'lowerba3' 'upperba3' None
+
+    fileappend 'path$'.qual 'h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''a3db''tab$''a3hz'
+
+  endif
 endif
+
+
