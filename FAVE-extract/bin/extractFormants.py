@@ -188,6 +188,16 @@ class VowelMeasurement:
         self.fol_word_trans = ''
         self.pre_word = ''
         self.fol_word = ''
+        self.h1_hz = None
+        self.h1_db = None
+        self.h2_hz = None
+        self.h2_db = None
+        self.a1_db = None
+        self.a1_hz = None
+        self.a2_db = None
+        self.a2_hz = None
+        self.a3_db = None
+        self.a3_hz = None
 
 class VowelMean:
 
@@ -912,6 +922,25 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         bandwidths = [fmt.bandwidths()]
         vm = measureVowel(p, w, formants, bandwidths, convertedTimes, intensity, measurementPointMethod,
             formantPredictionMethod, padBeg, padEnd, '', '')
+    
+    os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
+                          vowelWavFile + ' ' + str(vm.f1) + ' ' + str(vm.f2) + ' ' ' ' + str(vm.f3) + ' ' + str(vm.t-(vm.beg-padBeg)))
+    voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
+    voice_qual_num = voice_qual_fi.readline().rstrip().split("\t")
+    voice_qual_fi.close()
+
+    vm.h1_hz = voice_qual_num[0]
+    vm.h1_db = voice_qual_num[1]
+    vm.h2_hz = voice_qual_num[2]
+    vm.h2_db = voice_qual_num[3]
+    vm.a1_db = voice_qual_num[4]
+    vm.a1_hz = voice_qual_num[5]
+    vm.a2_db = voice_qual_num[6]
+    vm.a2_hz = voice_qual_num[7]
+    vm.a3_db = voice_qual_num[8]
+    vm.a3_hz = voice_qual_num[9]
+
+    os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual"))
 
     os.remove(os.path.join(SCRIPTS_HOME, vowelWavFile))
     return vm
@@ -1387,8 +1416,9 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'plt_vclass', 'plt_manner', 'plt_place', 
                                 'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
                                 'glide', 'pre_seg', 'fol_seg', 'context', 
-                                'vowel_index', 'pre_word_trans', 'word_trans', 
-                                'fol_word_trans', 'F1@20%', 'F2@20%',
+                                'vowel_index', 'pre_word_trans', 'word_trans',
+                                'fol_word_trans', 'h1_db', 'h2_db', 
+                                'F1@20%', 'F2@20%',
                                 'F1@35%','F2@35%', 'F1@50%', 'F2@50%', 
                                 'F1@65%','F2@65%', 'F1@80%', 'F2@80%']))
             if formantPredictionMethod == 'mahalanobis':
@@ -1437,7 +1467,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                  vm.pre_seg,
                                  vm.fol_seg, vm.context, vm.p_index, 
                                  vm.pre_word_trans, vm.word_trans, 
-                                 vm.fol_word_trans]))
+                                 vm.fol_word_trans, vm.h1_db, vm.h2_db]))
             fw.write('\t')
                      # time of measurement, beginning and end of phone,
                      # duration, Plotnik environment codes, style coding, glide
