@@ -42,7 +42,7 @@ while n_f0md = undefined & current_frame_int <= total_pitch_frames
 endwhile
 
 if n_f0md = undefined
-  fileappend 'path$'.qual 'tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$'
+  fileappend 'path$'.qual 'tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$''tab$'
 else
 
   rn_f0md = round('n_f0md')
@@ -76,7 +76,7 @@ else
 
 
   if f3hzpt = undefined
-    fileappend 'path$'.qual 'h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''tab$'
+    fileappend 'path$'.qual 'rn_f0md''tab$''h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''tab$'
   else
     p10_f3hzpt = 'f3hzpt' / 10  
     lowerba3 = 'f3hzpt' - 'p10_f3hzpt'
@@ -84,7 +84,7 @@ else
     a3db = Get maximum... 'lowerba3' 'upperba3' None
     a3hz = Get frequency of maximum... 'lowerba3' 'upperba3' None
 
-    fileappend 'path$'.qual 'h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''a3db''tab$''a3hz'
+    fileappend 'path$'.qual 'rn_f0md''tab$''h1db''tab$''rh1hz''tab$''h2db''tab$''rh2hz''tab$''a1db''tab$''a1hz''tab$''a2db''tab$''a2hz''tab$''a3db''tab$''a3hz'
 
   endif
 endif

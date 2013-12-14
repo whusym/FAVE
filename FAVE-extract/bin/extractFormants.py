@@ -188,6 +188,7 @@ class VowelMeasurement:
         self.fol_word_trans = ''
         self.pre_word = ''
         self.fol_word = ''
+        self.f0 = None
         self.h1_hz = None
         self.h1_db = None
         self.h2_hz = None
@@ -929,16 +930,17 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
     voice_qual_num = voice_qual_fi.readline().rstrip("\n").split("\t")
     voice_qual_fi.close()
 
-    vm.h1_hz = voice_qual_num[0]
+    vm.f0 = voice_qual_num[0]
     vm.h1_db = voice_qual_num[1]
-    vm.h2_hz = voice_qual_num[2]
+    vm.h1_hz = voice_qual_num[2]
     vm.h2_db = voice_qual_num[3]
-    vm.a1_db = voice_qual_num[4]
-    vm.a1_hz = voice_qual_num[5]
-    vm.a2_db = voice_qual_num[6]
-    vm.a2_hz = voice_qual_num[7]
-    vm.a3_db = voice_qual_num[8]
-    vm.a3_hz = voice_qual_num[9]
+    vm.h2_hz = voice_qual_num[4]
+    vm.a1_db = voice_qual_num[5]
+    vm.a1_hz = voice_qual_num[6]
+    vm.a2_db = voice_qual_num[7]
+    vm.a2_hz = voice_qual_num[8]
+    vm.a3_db = voice_qual_num[9]
+    vm.a3_hz = voice_qual_num[10]
 
     os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual"))
 
@@ -1417,7 +1419,8 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
                                 'glide', 'pre_seg', 'fol_seg', 'context', 
                                 'vowel_index', 'pre_word_trans', 'word_trans',
-                                'fol_word_trans', 'h1_db', 'h1_hz', 'h2_db',
+                                'fol_word_trans', 'f0',
+                                'h1_db', 'h1_hz', 'h2_db',
                                 'h2_hz', 'a1_db', 'a1_hz', 'a2_db', 'a2_hz',
                                 'a3_db','a2_hz',
                                 'F1@20%', 'F2@20%',
@@ -1469,7 +1472,8 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                  vm.pre_seg,
                                  vm.fol_seg, vm.context, vm.p_index, 
                                  vm.pre_word_trans, vm.word_trans, 
-                                 vm.fol_word_trans, vm.h1_db, vm.h1_hz,
+                                 vm.fol_word_trans, vm.f0,
+                                 vm.h1_db, vm.h1_hz,
                                  vm.h2_db, vm.h2_hz, vm.a1_db, vm.a1_hz,
                                  vm.a2_db, vm.a2_hz, vm.a3_db, vm.a3_hz]))
             fw.write('\t')
