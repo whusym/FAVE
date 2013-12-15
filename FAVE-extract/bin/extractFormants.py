@@ -854,6 +854,26 @@ def getTransitionLength(minimum, maximum):
 
     return transition
 
+def getVoiceQuality(vowelWavFile, vowelFileStem, vm):
+    os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
+                          vowelWavFile + ' ' + str(vm.f1) + ' ' + str(vm.f2) + ' ' ' ' + str(vm.f3) + ' ' + str(vm.t-(vm.beg-padBeg)))
+    voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
+    voice_qual_num = voice_qual_fi.readline().rstrip("\n").split("\t")
+    voice_qual_fi.close()
+
+    vm.f0 = voice_qual_num[0]
+    vm.h1_db = voice_qual_num[1]
+    vm.h1_hz = voice_qual_num[2]
+    vm.h2_db = voice_qual_num[3]
+    vm.h2_hz = voice_qual_num[4]
+    vm.a1_db = voice_qual_num[5]
+    vm.a1_hz = voice_qual_num[6]
+    vm.a2_db = voice_qual_num[7]
+    vm.a2_hz = voice_qual_num[8]
+    vm.a3_db = voice_qual_num[9]
+    vm.a3_hz = voice_qual_num[10]
+
+    os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual")) 
 
 def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMethod, measurementPointMethod, nFormants, maxFormant, windowSize, preEmphasis, padBeg, padEnd, speaker):
     """makes a vowel measurement"""
@@ -924,25 +944,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         vm = measureVowel(p, w, formants, bandwidths, convertedTimes, intensity, measurementPointMethod,
             formantPredictionMethod, padBeg, padEnd, '', '')
 
-    os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
-                          vowelWavFile + ' ' + str(vm.f1) + ' ' + str(vm.f2) + ' ' ' ' + str(vm.f3) + ' ' + str(vm.t-(vm.beg-padBeg)))
-    voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
-    voice_qual_num = voice_qual_fi.readline().rstrip("\n").split("\t")
-    voice_qual_fi.close()
-
-    vm.f0 = voice_qual_num[0]
-    vm.h1_db = voice_qual_num[1]
-    vm.h1_hz = voice_qual_num[2]
-    vm.h2_db = voice_qual_num[3]
-    vm.h2_hz = voice_qual_num[4]
-    vm.a1_db = voice_qual_num[5]
-    vm.a1_hz = voice_qual_num[6]
-    vm.a2_db = voice_qual_num[7]
-    vm.a2_hz = voice_qual_num[8]
-    vm.a3_db = voice_qual_num[9]
-    vm.a3_hz = voice_qual_num[10]
-
-    os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual"))
+    vm = getVoiceQuality(vowelWavFile, vowelFileStem, vm)
 
     os.remove(os.path.join(SCRIPTS_HOME, vowelWavFile))
     return vm
