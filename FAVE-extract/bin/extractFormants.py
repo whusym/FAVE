@@ -79,6 +79,8 @@ import vowel
 import numpy as np
 from itertools import tee, islice, izip
 
+from subprocess import Popen, PIPE
+
 from remeasure import remeasure
 from mahalanobis import mahalanobis
 
@@ -188,17 +190,13 @@ class VowelMeasurement:
         self.fol_word_trans = ''
         self.pre_word = ''
         self.fol_word = ''
-        self.f0 = None
-        self.h1_hz = None
-        self.h1_db = None
-        self.h2_hz = None
-        self.h2_db = None
-        self.a1_db = None
-        self.a1_hz = None
-        self.a2_db = None
-        self.a2_hz = None
-        self.a3_db = None
-        self.a3_hz = None
+        self.f0_max = None
+        self.f0_min = None
+        self.h1_db_max = None
+        self.h1_db_min = None        
+        self.h2_db_max = None
+        self.h2_db_min = None
+        self.jitter = None
 
 class VowelMean:
 
@@ -854,26 +852,48 @@ def getTransitionLength(minimum, maximum):
 
     return transition
 
-def getVoiceQuality(vowelWavFile, vowelFileStem, vm):
-    os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
-                          vowelWavFile + ' ' + str(vm.f1) + ' ' + str(vm.f2) + ' ' ' ' + str(vm.f3) + ' ' + str(vm.t-(vm.beg-padBeg)))
-    voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
-    voice_qual_num = voice_qual_fi.readline().rstrip("\n").split("\t")
-    voice_qual_fi.close()
+def getVoiceQuality(vowelWavFile, vowelFileStem, vm, padBeg):
 
-    vm.f0 = voice_qual_num[0]
-    vm.h1_db = voice_qual_num[1]
-    vm.h1_hz = voice_qual_num[2]
-    vm.h2_db = voice_qual_num[3]
-    vm.h2_hz = voice_qual_num[4]
-    vm.a1_db = voice_qual_num[5]
-    vm.a1_hz = voice_qual_num[6]
-    vm.a2_db = voice_qual_num[7]
-    vm.a2_hz = voice_qual_num[8]
-    vm.a3_db = voice_qual_num[9]
-    vm.a3_hz = voice_qual_num[10]
+    swipe = Popen("swipe -i "+os.path.join(SCRIPTS_HOME,vowelWavFile) + " -r 30:600 -t 0.1", shell = True, stdout = PIPE)
+    f0_track = swipe.stdout.readlines()
+    f0_track = [(float(t),float(f0)) for [t,f0] in [x.rstrip().split() for x in f0_track]]
+    if all([math.isnan(f0) for (t,f0) in f0_track]):
+        vm.f0_max = ''
+        vm.f0_min = ''
+        vm.h1_db_max = ''
+        vm.h2_db_min = ''
+        vm.jitter = ''
+        return(vm)
+    else:
+        f0 = [f0 for (t,f0) in f0_track]
+        min_num = np.nanmin(f0)
+        max_num = np.nanmax(f0)
 
-    os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual")) 
+        os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
+                          vowelWavFile + ' ' + str(min_num) + ' ' +str(1))
+        voice_qual_fi = open(os.path.join(SCRIPTS_HOME, vowelFileStem + ".qual"))
+        voice_qual_min = voice_qual_fi.readline().rstrip("\n").split("\t")
+        voice_qual_fi.close()
+        os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual"))
+
+
+        os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'getVoiceQual.praat') + ' ' +
+                          vowelWavFile + ' ' + str(max_num) + ' ' +str(0))
+        voice_qual_fi = open(os.path.join( SCRIPTS_HOME, vowelFileStem + ".qual"))
+        voice_qual_max = voice_qual_fi.readline().rstrip("\n").split("\t")
+        voice_qual_fi.close()
+        os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem+".qual"))
+
+
+        vm.f0_max = voice_qual_max[0]
+        vm.f0_min = voice_qual_min[0]
+        vm.h1_db_max = voice_qual_max[1]
+        vm.h1_db_min = voice_qual_min[1]
+        vm.h2_db_max = voice_qual_max[2]
+        vm.h2_db_min = voice_qual_min[2]
+        vm.jitter = voice_qual_min[3]
+
+        return(vm)
 
 def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMethod, measurementPointMethod, nFormants, maxFormant, windowSize, preEmphasis, padBeg, padEnd, speaker):
     """makes a vowel measurement"""
@@ -944,7 +964,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         vm = measureVowel(p, w, formants, bandwidths, convertedTimes, intensity, measurementPointMethod,
             formantPredictionMethod, padBeg, padEnd, '', '')
 
-    vm = getVoiceQuality(vowelWavFile, vowelFileStem, vm)
+    vm = getVoiceQuality(vowelWavFile, vowelFileStem, vm, padBeg)
 
     os.remove(os.path.join(SCRIPTS_HOME, vowelWavFile))
     return vm
@@ -1421,10 +1441,10 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
                                 'glide', 'pre_seg', 'fol_seg', 'context', 
                                 'vowel_index', 'pre_word_trans', 'word_trans',
-                                'fol_word_trans', 'f0',
-                                'h1_db', 'h1_hz', 'h2_db',
-                                'h2_hz', 'a1_db', 'a1_hz', 'a2_db', 'a2_hz',
-                                'a3_db','a2_hz',
+                                'fol_word_trans', 'f0_min', 'f0_max'
+                                'h1_db_min', 'h1_db_max',
+                                'h2_db_min', 'h2_db_max',                                
+                                'jitter',
                                 'F1@20%', 'F2@20%',
                                 'F1@35%','F2@35%', 'F1@50%', 'F2@50%', 
                                 'F1@65%','F2@65%', 'F1@80%', 'F2@80%']))
@@ -1474,10 +1494,10 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                  vm.pre_seg,
                                  vm.fol_seg, vm.context, vm.p_index, 
                                  vm.pre_word_trans, vm.word_trans, 
-                                 vm.fol_word_trans, vm.f0,
-                                 vm.h1_db, vm.h1_hz,
-                                 vm.h2_db, vm.h2_hz, vm.a1_db, vm.a1_hz,
-                                 vm.a2_db, vm.a2_hz, vm.a3_db, vm.a3_hz]))
+                                 vm.fol_word_trans, vm.f0_min, vm.f0_max,
+                                 vm.h1_db_min, vm.h1_db_max,
+                                 vm.h2_db_min, vm.h2_db_max,
+                                 vm.jitter]))
             fw.write('\t')
                      # time of measurement, beginning and end of phone,
                      # duration, Plotnik environment codes, style coding, glide
