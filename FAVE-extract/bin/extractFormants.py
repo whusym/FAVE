@@ -856,7 +856,7 @@ def getTransitionLength(minimum, maximum):
 
     return transition
 
-def getVoiceQuality(vowelWavFile, vm):
+def getVoiceQuality(vowelWavFile, vm, opts):
 
     pwd = os.getcwd()
     octpath = octave.path().split(":")
@@ -870,17 +870,19 @@ def getVoiceQuality(vowelWavFile, vm):
         creakF0 = np.squeeze(np.asarray(creakF0))
         H2H1 = np.squeeze(np.asarray(H2H1))
 
-        which_max_diff = np.argmax(abs(np.diff(creakF0)))
-        real_max_diff = np.diff(creakF0)[which_max_diff]
+        which_max_diff = np.argmax(np.exp(abs(np.diff(np.log(creakF0)))))
+        real_max_diff = np.exp(abs(np.diff(np.log(creakF0))))[which_max_diff]
         vm.h2h1_p = np.mean(H2H1>0)
         vm.h2h1_mean = np.mean(H2H1)
         vm.res_p = np.mean(res_p>0.36)
+        vm.res_p_median = np.median(res_p)
         vm.max_f0 = np.max(creakF0)
         vm.min_f0 = np.min(creakF0)
         vm.max_f0_d = real_max_diff
-        vm.mean_f0_d = np.mean(np.diff(creakF0))
+        vm.mean_f0_d = np.mean(np.exp(np.diff(np.log(creakF0))))
     except:
-        #print("Except kd")
+        if opts.verbose:
+            print("KD Failed")
         vm.h2h1_p = ''
         vm.resp = ''
     try:
@@ -888,6 +890,8 @@ def getVoiceQuality(vowelWavFile, vm):
         vm.ishi1 = np.mean(dec_orig)
         vm.ishi2 = np.mean(bin_dec)
     except:
+        if opts.verbose:
+            print("Ishi Failed")
         vm.ishi1 = ''
         vm.ishi2 = ''
 
@@ -962,7 +966,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         vm = measureVowel(p, w, formants, bandwidths, convertedTimes, intensity, measurementPointMethod,
             formantPredictionMethod, padBeg, padEnd, '', '')
 
-    vm = getVoiceQuality(vowelWavFile, vm)
+    vm = getVoiceQuality(vowelWavFile, vm, opts)
 
     os.remove(os.path.join(SCRIPTS_HOME, vowelWavFile))
     return vm
