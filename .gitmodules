@@ -1,0 +1,4 @@
+[submodule "FAVE-extract/bin/covarep"]
+	path = FAVE-extract/bin/covarep
+	url = git@github.com:JoFrhwld/covarep.git
+	branch = octave

@@ -11,3 +11,5 @@ faav
 --vowelSystem
 phila
 --remeasure
+--minVowelDuration
+0.075
