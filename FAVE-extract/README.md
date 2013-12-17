@@ -1,3 +1,34 @@
+# Voice Quality Edition.
+
+This is not likely to ever make it to the master branch.
+
+I've incorporated a slightly modified version of `covarep` here as a submodule.
+
+* Original: https://github.com/covarep/covarep
+* My minor changes: https://github.com/JoFrhwld/covarep/tree/octave
+
+These are matlab/octave scripts, which obviously necessitate octave.
+
+Getting all of the necessary octave libraries installed was painful, especially the `tsa` package.
+It also appears that none if the Ishi features work, due to a bug in `findpeaks` from the `signal` package.
+
+I installed Octave and all of its dependencies with homebrew.
+I also had to install gcc49.
+
+Then, I had to fix `mex.h` according to the description here:
+http://octave.1599824.n4.nabble.com/Problems-with-mkoctfile-using-GCC-4-8-1-td4657964.html
+
+I then had to edit `/usr/local/Cellar/octave/3.6.4/bin/mkoctfile-3.6.4` and just searched and replaced every instance of `clang` with `/usr/local/Cellar/gcc49/4.9-20131215/bin/gcc-4.9` and every instance of `clang++` with `/usr/local/Cellar/gcc49/4.9-20131215/bin/g++-4.9`.
+
+`extractFormants.py` is communicating with Octave using the `oct2py` package, which was easy to install:
+
+    pip install oct2py
+
+Feel free to explore, but you have been warned: there be dragons.
+
+---------------------
+
+
 For more information on the installation and use of FAVE-extract, see the associated pages on the GitHub wiki:
 https://github.com/JoFrhwld/FAVE/wiki/FAVE-extract
 

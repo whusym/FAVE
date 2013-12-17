@@ -880,7 +880,7 @@ def getVoiceQuality(vowelWavFile, vm):
         vm.max_f0_d = real_max_diff
         vm.mean_f0_d = np.mean(np.diff(creakF0))
     except:
-        print("Except kd")
+        #print("Except kd")
         vm.h2h1_p = ''
         vm.resp = ''
     try:
