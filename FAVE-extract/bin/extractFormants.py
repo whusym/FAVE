@@ -879,15 +879,9 @@ def getVoiceQuality(vowelWavFile, vm, opts):
     vm.min_f0 = np.min(creakF0)
     vm.max_f0_d = real_max_diff
     vm.mean_f0_d = np.mean(np.exp(np.diff(np.log(creakF0))))
-    try:
-        PwP,IFP,IPS,bin_dec,dec_orig,IPS_cur,time = octave.get_ishi_params_inter(x,fs)
-        vm.ishi1 = np.mean(dec_orig)
-        vm.ishi2 = np.mean(bin_dec)
-    except:
-        if opts.verbose:
-            print("Ishi Failed")
-        vm.ishi1 = ''
-        vm.ishi2 = ''
+    PwP,IFP,IPS,bin_dec,dec_orig,IPS_cur,time = octave.get_ishi_params_inter(x,fs)
+    vm.ishi1 = np.mean(dec_orig)
+    vm.ishi2 = np.mean(bin_dec)
 
     return(vm)
 
