@@ -865,26 +865,20 @@ def getVoiceQuality(vowelWavFile, vm, opts):
         p = octave.initcovarep()
 
     x,fs = octave.wavread(os.path.join(SCRIPTS_HOME, vowelWavFile))
-    try:
-        H2H1,res_p,ZCR,F0,F0mean,enerN,pow_std,creakF0 = octave.get_kd_creak_features(x,fs)
-        creakF0 = np.squeeze(np.asarray(creakF0))
-        H2H1 = np.squeeze(np.asarray(H2H1))
+    H2H1,res_p,ZCR,F0,F0mean,enerN,pow_std,creakF0 = octave.get_kd_creak_features(x,fs)
+    creakF0 = np.squeeze(np.asarray(creakF0))
+    H2H1 = np.squeeze(np.asarray(H2H1))
 
-        which_max_diff = np.argmax(np.exp(abs(np.diff(np.log(creakF0)))))
-        real_max_diff = np.exp(abs(np.diff(np.log(creakF0))))[which_max_diff]
-        vm.h2h1_p = np.mean(H2H1>0)
-        vm.h2h1_mean = np.mean(H2H1)
-        vm.res_p = np.mean(res_p>0.36)
-        vm.res_p_median = np.median(res_p)
-        vm.max_f0 = np.max(creakF0)
-        vm.min_f0 = np.min(creakF0)
-        vm.max_f0_d = real_max_diff
-        vm.mean_f0_d = np.mean(np.exp(np.diff(np.log(creakF0))))
-    except:
-        if opts.verbose:
-            print("KD Failed")
-        vm.h2h1_p = ''
-        vm.resp = ''
+    which_max_diff = np.argmax(np.exp(abs(np.diff(np.log(creakF0)))))
+    real_max_diff = np.exp(abs(np.diff(np.log(creakF0))))[which_max_diff]
+    vm.h2h1_p = np.mean(H2H1>0)
+    vm.h2h1_mean = np.mean(H2H1)
+    vm.res_p = np.mean(res_p>0.36)
+    vm.res_p_median = np.median(res_p)
+    vm.max_f0 = np.max(creakF0)
+    vm.min_f0 = np.min(creakF0)
+    vm.max_f0_d = real_max_diff
+    vm.mean_f0_d = np.mean(np.exp(np.diff(np.log(creakF0))))
     try:
         PwP,IFP,IPS,bin_dec,dec_orig,IPS_cur,time = octave.get_ishi_params_inter(x,fs)
         vm.ishi1 = np.mean(dec_orig)
