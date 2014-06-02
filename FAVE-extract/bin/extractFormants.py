@@ -734,6 +734,33 @@ def getPadding(phone, windowSize, maxTime):
     return (padBeg, padEnd)
 
 
+def getPaddingL(phone, nextPhone, windowSize, maxTime):
+    """checks that the padding for the analysis window does not exceed file boundaries; adjusts padding accordingly"""
+
+    # if the phone is at the beginning (or end) of the sound file, we need to make sure that the added window will not
+    # extend past the beginning (or end) of the file, since this will mess up extractPortion();
+    # if it does, truncate the added window to the available space
+
+    # check padding at beginning of vowel
+    if phone.xmin - windowSize < 0:
+        padBeg = phone.xmin
+    # extend left padding for AY
+    elif phone.label[:-1] == "AY":
+        if phone.xmin - 2 * windowSize < 0:
+            padBeg = phone.xmin
+        else:
+            padBeg = 2 * windowSize
+    else:
+        padBeg = windowSize
+    # check padding at end of vowel
+    if nextPhone.xmax + windowSize > maxTime:
+        padEnd = maxTime - nextPhone.xmax
+    else:
+        padEnd = windowSize
+
+    return (padBeg, padEnd)    
+
+
 def getSoundEditor():
     """checks whether SoX or Praat are available as sound editors"""
 
@@ -2327,12 +2354,18 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                 markTime(count_analyzed + 1, p.label + " in " + w.transcription)
 
                 # get padding for vowel in question
-                padBeg, padEnd = getPadding(p, windowSize, maxTime)
+                if fol_seg == "L" and p_context in ["initial", "internal"]:
+                    padBeg, padEnd = getPaddingL(p, w.phones[p_index+1], windowSize, maxTime)
+                else:
+                    padBeg, padEnd = getPadding(p, windowSize, maxTime)
                 ## p = phone
                 # windowSize:  from config file or default settings
                 # maxTime = duration of sound file/TextGrid
 
-                extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, p.xmax + padEnd, soundEditor)
+                if fol_seg == "L" and p_context in ["initial", "internal"]:
+                    extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, w.phones[p_index+1].xmax + padEnd, soundEditor)
+                else:
+                    extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, p.xmax + padEnd, soundEditor)
 
                 vm = getVowelMeasurement(vowelFileStem, p, w, opts.speechSoftware,
                                          formantPredictionMethod, measurementPointMethod, nFormants, maxFormant, windowSize, preEmphasis, padBeg, padEnd, speaker)
