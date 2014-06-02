@@ -1818,6 +1818,8 @@ def setup_parser():
                         help="covariances, required for mahalanobis method")
     parser.add_argument("--formantPredictionMethod", choices = ["default","mahalanobis"], default = "mahalanobis",
                         help="Formant prediction method")
+    parser.add_argument("--lateralTracks", action="store_true",
+                        help="include following laterals in the formant tracks")
     parser.add_argument("--maxFormant", type=int, default=5000)
     parser.add_argument("--means", "-m",  default="means.txt",
                         help="mean values, required for mahalanobis method")
@@ -2035,6 +2037,7 @@ def writeLog(filename, wavFile, maxTime, meansFile, covsFile, stopWords, opts):
     f.write("- minVowelDuration:\t\t%.3f\n" % opts.minVowelDuration)
     f.write("- formantPredictionMethod:\t%s\n" % opts.formantPredictionMethod)
     f.write("- measurementPointMethod:\t%s\n" % opts.measurementPointMethod)
+    f.write("- lateralTracks:\t%s\n" % opts.lateralTracks)
     f.write("- nFormants:\t\t\t%i\n" % opts.nFormants)
     f.write("- maxFormant:\t\t\t%i\n" % opts.maxFormant)
     f.write("- nSmoothing:\t\t\t%i\n" % opts.nSmoothing)
@@ -2354,7 +2357,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                 markTime(count_analyzed + 1, p.label + " in " + w.transcription)
 
                 # get padding for vowel in question
-                if fol_seg == "L" and p_context in ["initial", "internal"]:
+                if fol_seg == "L" and p_context in ["initial", "internal"] and opts.lateralTracks:
                     padBeg, padEnd = getPaddingL(p, w.phones[p_index+1], windowSize, maxTime)
                 else:
                     padBeg, padEnd = getPadding(p, windowSize, maxTime)
@@ -2362,7 +2365,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                 # windowSize:  from config file or default settings
                 # maxTime = duration of sound file/TextGrid
 
-                if fol_seg == "L" and p_context in ["initial", "internal"]:
+                if fol_seg == "L" and p_context in ["initial", "internal"] and opts.lateralTracks:
                     extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, w.phones[p_index+1].xmax + padEnd, soundEditor)
                 else:
                     extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, p.xmax + padEnd, soundEditor)
