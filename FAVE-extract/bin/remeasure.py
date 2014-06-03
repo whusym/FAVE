@@ -258,14 +258,13 @@ def repredictF1F2(measurements, vowelMeans, vowelCovs, vowels):
                             x, vowelMeans[vowel], vowelCovs[vowel])
                         valuesList.append(outvalues)
                         distanceList.append(dist)
-                        nFormantsList.append(
-                            i + 3)  # these are the formant setting used, not the actual number of formants returned
+                        nFormantsList.append(i + 6)  # these are the formant setting used, not the actual number of formants returned
                         keepOldTracks = False
                 else:
                     valuesList.append(
                         [float(vm.f1), float(vm.f2), vm.f3, math.log(float(vm.b1)), math.log(float(vm.b2)), vm.b3, lDur])
                     distanceList.append(0)
-                    nFormantsList.append(i + 3)
+                    nFormantsList.append(i + 6)
 
         winnerIndex = distanceList.index(min(distanceList))
         dist = repr(min(distanceList))
