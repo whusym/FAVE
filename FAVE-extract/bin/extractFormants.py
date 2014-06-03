@@ -1672,7 +1672,8 @@ def predictF1F2(phone, selectedpoles, selectedbandwidths, means, covs):
                     # append poles and bandwidths to list of values
                     # (if F3 and bandwidth measurements exist, add to list of appended values)
                     if len(poles) > 2:
-                        values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
+                        values.append(
+                            [poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
                     else:
                         values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], '', ''])
                     # append corresponding Mahalanobis distance to list of
