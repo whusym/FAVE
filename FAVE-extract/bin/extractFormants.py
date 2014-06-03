@@ -1149,7 +1149,7 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
         measurementPoints = []
         all_tracks = []
         # predict F1 and F2 based on the LPC values at this point in time
-        for j in range(4):
+        for j in range(7):
             # get point of measurement and corresponding index (closest to point of measurement) according to method specified in config file
             # NOTE:  Point of measurement and time index will be the same for "third", "mid", "fourth" methods for all values of nFormants
             # For "lennig", "anae" and "faav", which depend on the shape of the
