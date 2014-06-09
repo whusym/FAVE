@@ -903,17 +903,17 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         if formantPredictionMethod == 'mahalanobis':
             # get measurements for nFormants = 3, 4, 5, 6
             LPCs = []
-            nFormants = 6
-            while nFormants <= 12:
+            nFormants = 6.0
+            while nFormants <= 12.0:
                 os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'extractFormants.praat') + ' ' +
                           vowelWavFile + ' ' + str(nFormants/2) + ' ' + str(maxFormant) + ' ' ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
                 lpc = praat.Formant()
                 lpc.read(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
                 LPCs.append(lpc)
-                nFormants += 1
+                nFormants += 1.0
         else:
             os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'extractFormants.praat') + ' ' +
-                      vowelWavFile + ' ' + str(nFormants) + ' ' + str(maxFormant) + ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
+                      vowelWavFile + ' ' + str(nFormants/2) + ' ' + str(maxFormant) + ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
             fmt = praat.Formant()
             fmt.read(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
         os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
@@ -1238,8 +1238,7 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
     vm.times = times
 
     if formantPredictionMethod == 'mahalanobis':
-        vm.nFormants = winnerIndex + \
-            3  # actual formant settings used in the analysis
+        vm.nFormants = (winnerIndex + 6) # actual formant settings used in the analysis
         if phone.label[:-1] == "AY":
             vm.glide = detectMonophthong(poles[winnerIndex], measurementPoints[
                                          winnerIndex][0], measurementPoints[winnerIndex][1])
@@ -1389,10 +1388,10 @@ def outputFormantSettings(measurements, speaker, outputFile):
     # indices
     count = {}
     for code in plotnik.PLOTNIKCODES:
-        for nf in range(3, 7):
+        for nf in range(6, 13):
             count[(int(code), nf)] = 0
     for vm in measurements:
-        count[(int(vm.cd), int(vm.nFormants))] += 1
+        count[(int(vm.cd), vm.nFormants)] += 1
 
     # filename = name of the output file, but with extension "nFormants"
     outfilename = os.path.splitext(outputFile)[0] + ".nFormants"
@@ -1405,7 +1404,7 @@ def outputFormantSettings(measurements, speaker, outputFile):
     f.write('----------------------------------------\n')
     for code in plotnik.PLOTNIKCODES:
         f.write(code)
-        for nf in range(3, 7):
+        for nf in range(6, 13):
             f.write('\t' + str(count[(int(code), nf)]))
         f.write('\n')
     f.close()
