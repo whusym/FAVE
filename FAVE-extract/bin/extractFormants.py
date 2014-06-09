@@ -2325,6 +2325,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                     fol_seg = w.phones[p_index+1].label
                 elif p_index is (len(w.phones)-1):
                     p_context = "final"
+
                     pre_seg = w.phones[p_index-1].label
                     try:
                         fol_seg = fol_w.phones[0].label
