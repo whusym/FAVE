@@ -333,7 +333,7 @@ def output(remeasurements):
     fw.close()
 
 
-def remeasure(measurements):
+def remeasure(measurements, remeasuremaxiter):
     niter = sum([len(vm.remeasurepath) for vm in measurements])/len(measurements)
 
     if niter == 1:
@@ -345,7 +345,7 @@ def remeasure(measurements):
         remeasurements = repredictF1F2(measurements, vowelMeans, vowelCovs, vowels)
         reremeasurements = remeasure(remeasurements)
         return reremeasurements
-    elif niter >= 50:
+    elif niter >= remeasuremaxiter:
         print("reached maximum iteration")
         return measurements
     else:

@@ -1722,6 +1722,8 @@ def setup_parser():
                         help = "save vowel measurement information as a picklefile")
     parser.add_argument("--remeasurement", action="store_true",
                         help="Do a second pass is performed on the data, using the speaker's own system as the base of comparison for the Mahalanobis distance")
+    parser.add_argument("--remeasuremaxiter", type=int, default=50,
+                        help="Maximum number of remeasurement iterations to be allowed.")
     parser.add_argument("--removeStopWords", action="store_true",
                         help="Don't measure vowels in stop words." )
     parser.add_argument("--speechSoftware", choices = ['praat', 'Praat', 'esps', 'ESPS'], default = "Praat",
@@ -2023,6 +2025,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
     preEmphasis = opts.preEmphasis
     multipleFiles = opts.multipleFiles
     remeasurement = opts.remeasurement
+    remeasuremaxiter = opts.remeasuremaxiter
     candidates = opts.candidates
     vowelSystem = opts.vowelSystem
     print "Processed options."
@@ -2265,7 +2268,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                     count_analyzed += 1
 
         if remeasurement and formantPredictionMethod == 'mahalanobis':
-            measurements = remeasure(measurements)
+            measurements = remeasure(measurements, remeasuremaxiter)
 
         # don't output anything if we didn't take any measurements
         # (this prevents the creation of empty output files)
