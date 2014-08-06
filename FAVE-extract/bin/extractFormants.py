@@ -172,6 +172,7 @@ class VowelMeasurement:
         self.bandwidths = []
             # original list of bandwidths returned by LPC analysis
         self.nFormants = None  # actual formant settings used in the measurement (for Mahalanobis distance method)
+        self.remeasurepath=[]
         self.glide = ''  # Plotnik glide coding
         self.norm_f1 = None  # normalized F1
         self.norm_f2 = None  # normalized F2
@@ -1180,8 +1181,8 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
     vm.bandwidths = selectedbandwidths  # original bandwidths returned by LPC analysis
 
     if formantPredictionMethod == 'mahalanobis':
-        vm.nFormants = winnerIndex + \
-            3  # actual formant settings used in the analysis
+        vm.nFormants = winnerIndex + 3  # actual formant settings used in the analysis
+        vm.remeasurepath = vm.remeasurepath + [winnerIndex]
         if phone.label[:-1] == "AY":
             vm.glide = detectMonophthong(poles[winnerIndex], measurementPoints[
                                          winnerIndex][0], measurementPoints[winnerIndex][1])
