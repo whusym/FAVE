@@ -343,6 +343,93 @@ def anae(v, formants, times):
 
     return measurementPoint
 
+def bootstrap(selectedpoles, selectedbandwidths):
+    """returns F1 and F2 (and bandwidths) as determined by Mahalanobis distance to ANAE data"""
+
+    # phone = vowel to be analyzed
+    # poles =
+    # bandwidths =
+    # means =
+    # covs =
+
+    vF1 = np.array([pole[0] for pole in selectedpoles if len(pole)>=2])
+    vF2 = np.array([pole[1] for pole in selectedpoles if len(pole)>=2])
+
+    vB1 = np.array([math.log(bwidth[0]) for bwidth in selectedbandwidths if len(bwidth)>=2])
+    vB2 = np.array([math.log(bwidth[1]) for bwidth in selectedbandwidths if len(bwidth)>=2])
+
+    token_means = np.array([vF1.mean(), vF2.mean(), vB1.mean(), vB2.mean()])
+    token_cov = np.cov(np.vstack((vF1, vF2, vB1, vB2, vDur)))
+
+
+    if np.linalg.det(token_cov) != 0:
+        token_ic = np.linalg.inv(token_cov)
+
+        values = []
+            # this list keeps track of all pairs of poles/bandwidths "tested"
+        distances = []
+            # this list keeps track of the corresponding value of the Mahalanobis distance
+        # for all values of nFormants:
+
+        for poles, bandwidths in zip(selectedpoles, selectedbandwidths):
+            # check that there are at least two formants in the selected frame
+            if len(poles) >= 2:
+                # nPoles = len(poles)     ## number of poles
+                # check all possible combinations of F1, F2, F3:
+                # for i in range(min([nPoles - 1, 2])):
+                #    for j in range(i+1, min([nPoles, 3])):
+                        i = 0
+                        j = 1
+                        # vector with current pole combination and associated
+                        # bandwidths
+                        x = np.array([poles[i], poles[j], math.log(bandwidths[i]), math.log(bandwidths[j])])
+                        # calculate Mahalanobis distance between x and ANAE mean
+                        dist = mahalanobis(x, means, cov)
+                        # append poles and bandwidths to list of values
+                        # (if F3 and bandwidth measurements exist, add to list of appended values)
+                        if len(poles) > 2:
+                            values.append(
+                                [poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
+                        else:
+                            values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], '', ''])
+                        # append corresponding Mahalanobis distance to list of
+                        # distances
+                        distances.append(dist)
+            # we need to append something to the distances and values lists so that the winnerIndex still corresponds with nFormants!
+            # (this is for the case that the selected formant frame only contains F1 - empty string will not be selected as minimum distance)
+            else:
+                # if there are gaps in the formant tracks and the vowel duration is
+                # short, the whole formant track may disappear during smoothing
+                if len(poles) == 1 and len(bandwidths) == 1:
+                    values.append([poles[0], '', bandwidths[0], '', '', ''])
+                else:
+                    values.append(['', '', '', '', '', ''])
+                distances.append('')
+        # get index for minimum Mahalanobis distance
+        winnerIndex = distances.index(min(distances))
+    else:
+        winnerIndex = 2
+    # get corresponding F1, F2 and bandwidths values
+    f1 = values[winnerIndex][0]
+    f2 = values[winnerIndex][1]
+    f3 = values[winnerIndex][4]
+    # if there is a "gap" in the wave form at the point of measurement, the bandwidths returned will be empty,
+    # and the following will cause an error...
+    if values[winnerIndex][2]:
+        b1 = values[winnerIndex][2]
+    else:
+        b1 = ''
+    if values[winnerIndex][3]:
+        b2 = values[winnerIndex][3]
+    else:
+        b2 = ''
+    if values[winnerIndex][5]:
+        b3 = values[winnerIndex][5]
+    else:
+        b3 = ''
+    # return tuple of measurements
+    return (f1, f2, f3, b1, b2, b3, winnerIndex)
+
 
 def calculateMeans(measurements):
     """takes a list of vowel measurements and calculates the means for each vowel class"""
@@ -774,7 +861,7 @@ def getSpeakerBackground(speakername, speakernum):
     speaker.sex = raw_input("Sex:\t\t\t")
     # check that speaker sex is defined - this is required for the Mahalanobis
     # method!
-    if formantPredictionMethod == "mahalanobis":
+    if formantPredictionMethod == "mahalanobis" or formantPredictionMethod == 'bootstrap':
         if not speaker.sex:
             print "ERROR!  Speaker sex must be defined for the 'mahalanobis' formantPredictionMethod!"
             sys.exit()
@@ -859,7 +946,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
     # option yet...
     if speechSoftware == 'esps':
         esps.runFormant(vowelWavFile)
-        if formantPredictionMethod == 'mahalanobis':
+        if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
             lpc = esps.LPC()
             lpc.read(vowelFileStem + '.pole')
         else:
@@ -869,7 +956,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         esps.rmFormantFiles(vowelFileStem)
     # via Praat:  ## NOTE:  all temp files are in the "/bin" directory!
     else:   # assume praat here
-        if formantPredictionMethod == 'mahalanobis':
+        if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
             # get measurements for nFormants = 3, 4, 5, 6
             LPCs = []
             nFormants = 3
@@ -898,7 +985,7 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
             intensity = praat.Intensity()
     # get measurement according to formant prediction method
     # Mahalanobis:
-    if formantPredictionMethod == 'mahalanobis':
+    if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
         convertedTimes = []
         poles = []
         bandwidths = []
@@ -1091,7 +1178,7 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
             bandwidths = [smoothTracks(b, nSmoothing) for b in bandwidths]
             times = [t[nSmoothing:-nSmoothing] for t in times]
 
-    if formantPredictionMethod == 'mahalanobis':
+    if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
         selectedpoles = []
         selectedbandwidths = []
         measurementPoints = []
@@ -1109,8 +1196,11 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
             selectedpoles.append(poles[j][i])
             selectedbandwidths.append(bandwidths[j][i])
             all_tracks.append(getFormantTracks(poles[j], times[j], phone.xmin-padBeg, phone.xmax+padEnd))
+        if formantPredictionMethod == 'mahalanobis':
+            f1, f2, f3, b1, b2, b3, winnerIndex = predictF1F2(phone, selectedpoles, selectedbandwidths, means, covs)
+        else:
+            f1, f2, f3, b1, b2, b3, winnerIndex = bootstrap(selectedpoles, selectedbandwidths)
 
-        f1, f2, f3, b1, b2, b3, winnerIndex = predictF1F2(phone, selectedpoles, selectedbandwidths, means, covs)
         # check that we actually do have a measurement (this may not be the
         # case for gaps in the wave form)
         if not f1 and not f2 and not f3 and not b1 and not b2 and not b3:
@@ -1180,7 +1270,7 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
     vm.poles = selectedpoles  # original poles returned by LPC analysis
     vm.bandwidths = selectedbandwidths  # original bandwidths returned by LPC analysis
 
-    if formantPredictionMethod == 'mahalanobis':
+    if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod=='bootstrap':
         vm.nFormants = winnerIndex + 3  # actual formant settings used in the analysis
         vm.remeasurepath = vm.remeasurepath + [winnerIndex]
         if phone.label[:-1] == "AY":
@@ -1375,7 +1465,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'fol_word_trans', 'F1@20%', 'F2@20%',
                                 'F1@35%','F2@35%', 'F1@50%', 'F2@50%', 
                                 'F1@65%','F2@65%', 'F1@80%', 'F2@80%']))
-            if formantPredictionMethod == 'mahalanobis':
+            if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
                 fw.write('\t')
                 fw.write('nFormants')
             if candidates:
@@ -1453,7 +1543,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                            'cd', 'fm', 'fp', 'fv', 'ps', 'fs', 'style', 'glide',
                            'norm_F1@20%', 'norm_F2@20%', 'norm_F1@35%', 'norm_F2@35%', 'norm_F1@50%', 'norm_F2@50%',
                            'norm_F1@65%', 'norm_F2@65%', 'norm_F1@80%', 'norm_F2@80%']))
-            if formantPredictionMethod == 'mahalanobis':
+            if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
                 fw.write('\t')
                 fw.write('nFormants')
             fw.write('\n')
@@ -1503,7 +1593,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
         sys.exit(0)
 
     # write summary of formant settings to file
-    if formantPredictionMethod == 'mahalanobis':
+    if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
         outputFormantSettings(measurements, speaker, outputFile)
 
 def parseStopWordsFile(f):
@@ -2267,7 +2357,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
                     measurements.append(vm)
                     count_analyzed += 1
 
-        if remeasurement and formantPredictionMethod == 'mahalanobis':
+        if remeasurement and formantPredictionMethod in ['mahalanobis', 'bootstrap']:
             measurements = remeasure(measurements, remeasuremaxiter)
 
         # don't output anything if we didn't take any measurements
