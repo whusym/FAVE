@@ -333,7 +333,7 @@ def output(remeasurements):
     fw.close()
 
 
-def remeasure(measurements, remeasuremaxiter):
+def remeasure(measurements, remeasuremaxiter=50):
     niter = sum([len(vm.remeasurepath) for vm in measurements])/len(measurements)
 
     if niter == 1:
@@ -343,7 +343,7 @@ def remeasure(measurements, remeasuremaxiter):
         invowels = excludeOutliers(vowels, vowelMeans, vowelCovs)
         vowelMeans, vowelCovs = calculateVowelMeans(invowels)
         remeasurements = repredictF1F2(measurements, vowelMeans, vowelCovs, vowels)
-        reremeasurements = remeasure(remeasurements)
+        reremeasurements = remeasure(remeasurements, remeasuremaxiter)
         return reremeasurements
     elif niter >= remeasuremaxiter:
         print("reached maximum iteration")
@@ -360,7 +360,7 @@ def remeasure(measurements, remeasuremaxiter):
             invowels = excludeOutliers(vowels, vowelMeans, vowelCovs)
             vowelMeans, vowelCovs = calculateVowelMeans(invowels)
             remeasurements = repredictF1F2(measurements, vowelMeans, vowelCovs, vowels)            
-            reremeasurements = remeasure(remeasurements)
+            reremeasurements = remeasure(remeasurements, remeasuremaxiter)
             return reremeasurements
 
 
@@ -371,7 +371,8 @@ def remeasure(measurements, remeasuremaxiter):
 #file = "/Users/joseffruehwald/Documents/Classes/Fall_10/misc/FAAV/extractFormants_modified/PH06-2-1-AB-Jean.formants"
 if __name__ == '__main__':
     file = sys.argv[1]
+    remesuremaxiter = sys.argv[2]
     vowelindex = 13
     measurements = loadfile(file)
-    remeasurements = remeasure(measurements)
+    remeasurements = remeasure(measurements, remeasuremaxiter)
     output(remeasurements)

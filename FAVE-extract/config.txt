@@ -8,4 +8,8 @@ mahalanobis
 faav
 --nSmoothing
 12
---remeasure
+--remeasurement
+--remeasuremaxiter
+100
+--vowelSystem
+phila
