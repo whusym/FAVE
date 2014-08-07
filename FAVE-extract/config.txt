@@ -3,7 +3,7 @@ txt
 --speechSoftware
 Praat
 --formantPredictionMethod
-mahalanobis
+bootstrap
 --measurementPointMethod
 faav
 --nSmoothing

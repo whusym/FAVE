@@ -359,15 +359,15 @@ def bootstrap(selectedpoles, selectedbandwidths):
     vB2 = np.array([math.log(bwidth[1]) for bwidth in selectedbandwidths if len(bwidth)>=2])
 
     token_means = np.array([vF1.mean(), vF2.mean(), vB1.mean(), vB2.mean()])
-    token_cov = np.cov(np.vstack((vF1, vF2, vB1, vB2, vDur)))
+    token_cov = np.cov(np.vstack((vF1, vF2, vB1, vB2)))
 
+    values = []
 
     if np.linalg.det(token_cov) != 0:
         token_ic = np.linalg.inv(token_cov)
 
-        values = []
             # this list keeps track of all pairs of poles/bandwidths "tested"
-        distances = []
+        distances = np.array([])
             # this list keeps track of the corresponding value of the Mahalanobis distance
         # for all values of nFormants:
 
@@ -378,23 +378,26 @@ def bootstrap(selectedpoles, selectedbandwidths):
                 # check all possible combinations of F1, F2, F3:
                 # for i in range(min([nPoles - 1, 2])):
                 #    for j in range(i+1, min([nPoles, 3])):
-                        i = 0
-                        j = 1
-                        # vector with current pole combination and associated
-                        # bandwidths
-                        x = np.array([poles[i], poles[j], math.log(bandwidths[i]), math.log(bandwidths[j])])
-                        # calculate Mahalanobis distance between x and ANAE mean
-                        dist = mahalanobis(x, means, cov)
-                        # append poles and bandwidths to list of values
-                        # (if F3 and bandwidth measurements exist, add to list of appended values)
-                        if len(poles) > 2:
-                            values.append(
-                                [poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
-                        else:
-                            values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], '', ''])
-                        # append corresponding Mahalanobis distance to list of
-                        # distances
-                        distances.append(dist)
+                i = 0
+                j = 1
+                # vector with current pole combination and associated
+                # bandwidths
+                x = np.array([poles[i], poles[j], math.log(bandwidths[i]), math.log(bandwidths[j])])
+                # calculate Mahalanobis distance between x and ANAE mean
+                dist = mahalanobis(x, token_means, token_ic)
+                # append poles and bandwidths to list of values
+                # (if F3 and bandwidth measurements exist, add to list of appended values)
+                if len(poles) > 2:
+                    values.append(
+                        [poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
+                else:
+                    values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], '', ''])
+                # append corresponding Mahalanobis distance to list of
+                # distances
+                if np.isnan(dist):
+                    distances = np.append(distances, np.inf)
+                else:
+                    distances = np.append(distances, dist)
             # we need to append something to the distances and values lists so that the winnerIndex still corresponds with nFormants!
             # (this is for the case that the selected formant frame only contains F1 - empty string will not be selected as minimum distance)
             else:
@@ -404,10 +407,35 @@ def bootstrap(selectedpoles, selectedbandwidths):
                     values.append([poles[0], '', bandwidths[0], '', '', ''])
                 else:
                     values.append(['', '', '', '', '', ''])
-                distances.append('')
+                distances = np.append(distances, np.inf)
         # get index for minimum Mahalanobis distance
-        winnerIndex = distances.index(min(distances))
+        print(repr(distances))
+        if all(np.isinf(distances)):
+            winnerIndex = 2
+        else:
+            winnerIndex = np.argmin(distances)
+        print(repr(winnerIndex))
     else:
+        for poles, bandwidths in zip(selectedpoles, selectedbandwidths):
+            if len(poles) >= 2:
+                i = 0
+                j = 1
+
+                if len(poles) > 2:
+                    values.append(
+                        [poles[i], poles[j], bandwidths[i], bandwidths[j], poles[2], bandwidths[2]])
+                else:
+                    values.append([poles[i], poles[j], bandwidths[i], bandwidths[j], '', ''])
+            else:
+                # if there are gaps in the formant tracks and the vowel duration is
+                # short, the whole formant track may disappear during smoothing
+                if len(poles) == 1 and len(bandwidths) == 1:
+                    values.append([poles[0], '', bandwidths[0], '', '', ''])
+                else:
+                    values.append(['', '', '', '', '', ''])
+
+
+
         winnerIndex = 2
     # get corresponding F1, F2 and bandwidths values
     f1 = values[winnerIndex][0]
@@ -1785,7 +1813,7 @@ def setup_parser():
                         help="Return word transcriptions in specified case.")
     parser.add_argument("--covariances", "-r",  default="covs.txt",
                         help="covariances, required for mahalanobis method")
-    parser.add_argument("--formantPredictionMethod", choices = ["default","mahalanobis"], default = "mahalanobis",
+    parser.add_argument("--formantPredictionMethod", choices = ["default","mahalanobis","bootstrap"], default = "mahalanobis",
                         help="Formant prediction method")
     parser.add_argument("--maxFormant", type=int, default=5000)
     parser.add_argument("--means", "-m",  default="means.txt",
@@ -2134,7 +2162,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
 
     # if we're using the Mahalanobis distance metric for vowel formant prediction,
     # we need to load files with the mean and covariance values
-    if formantPredictionMethod == 'mahalanobis':
+    if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
         global means, covs
         means = loadMeans(meansFile)  # "means.txt"
         covs = loadCovs(covsFile)  # "covs.txt"
