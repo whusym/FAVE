@@ -274,7 +274,10 @@ def repredictF1F2(measurements, vowelMeans, vowelCovs, vowels):
         vm.f1 = round(bestValues[0], 1)
         vm.f2 = round(bestValues[1], 1)
         if bestValues[2] != "NA" and bestValues[2] != None:
-            vm.f3 = round(bestValues[2], 1)
+            try:
+                vm.f3 = round(bestValues[2], 1)
+            except TypeError:
+                vm.F2 = ''
         else:
             vm.f3 = ''
         vm.b1 = round(math.exp(bestValues[3]), 1)
