@@ -24,7 +24,7 @@
 # - changed Praat Formant method to Burg for Mahalanobis measurement method   ##
 # - adapted Mahalanobis method to vary number of formants from 3 to 6 (Burg), ##
 # then choose winning pair from all F1/F2 combinations of these             ##
-# - changed Praat object from LPC to Formant                                  ##
+# - changed Praat object from` LPC to Formant                                  ##
 # - no restriction on # of formants per frame for Formant objects             ##
 # - smoothing of formant tracks ( -> parameter nSmoothing in options)         ##
 # - FAAV measurement procedure:                                               ##
@@ -78,6 +78,7 @@ import vowel
 import subprocess
 
 import pickle
+import csv
 
 import numpy as np
 from itertools import tee, islice, izip
@@ -171,6 +172,11 @@ class VowelMeasurement:
         self.poles = []  # original list of poles returned by LPC analysis
         self.bandwidths = []
             # original list of bandwidths returned by LPC analysis
+        self.times = []
+        self.winner_poles = []
+        self.winner_bandwidths = []
+        self.all_poles = []
+        self.all_bandwidths = []
         self.nFormants = None  # actual formant settings used in the measurement (for Mahalanobis distance method)
         self.remeasurepath=[]
         self.glide = ''  # Plotnik glide coding
@@ -987,17 +993,17 @@ def getVowelMeasurement(vowelFileStem, p, w, speechSoftware, formantPredictionMe
         if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod == 'bootstrap':
             # get measurements for nFormants = 3, 4, 5, 6
             LPCs = []
-            nFormants = 3
-            while nFormants <= 6:
+            nFormants = 6.0
+            while nFormants <= 12.0:
                 os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'extractFormants.praat') + ' ' +
-                          vowelWavFile + ' ' + str(nFormants) + ' ' + str(maxFormant) + ' ' ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
+                          vowelWavFile + ' ' + str(nFormants/2) + ' ' + str(maxFormant) + ' ' ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
                 lpc = praat.Formant()
                 lpc.read(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
                 LPCs.append(lpc)
-                nFormants += 1
+                nFormants += 1.0
         else:
             os.system(os.path.join(PRAATPATH, PRAATNAME) + ' ' + os.path.join(SCRIPTS_HOME, 'extractFormants.praat') + ' ' +
-                      vowelWavFile + ' ' + str(nFormants) + ' ' + str(maxFormant) + ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
+                      vowelWavFile + ' ' + str(nFormants/2) + ' ' + str(maxFormant) + ' ' + str(windowSize) + ' ' + str(preEmphasis) + ' burg')
             fmt = praat.Formant()
             fmt.read(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
         os.remove(os.path.join(SCRIPTS_HOME, vowelFileStem + '.Formant'))
@@ -1212,7 +1218,7 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
         measurementPoints = []
         all_tracks = []
         # predict F1 and F2 based on the LPC values at this point in time
-        for j in range(4):
+        for j in range(7):
             # get point of measurement and corresponding index (closest to point of measurement) according to method specified in config file
             # NOTE:  Point of measurement and time index will be the same for "third", "mid", "fourth" methods for all values of nFormants
             # For "lennig", "anae" and "faav", which depend on the shape of the
@@ -1235,6 +1241,8 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
             return None
         measurementPoint = measurementPoints[winnerIndex][0]
         # get five sample points of selected formant tracks
+        winner_poles = poles[winnerIndex]
+        winner_bandwidths = bandwidths[winnerIndex]
         tracks = all_tracks[winnerIndex]
 
     else:  # formantPredictionMethod == 'default'
@@ -1265,6 +1273,8 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
         # get five sample points of formant tracks
         tracks = getFormantTracks(poles[0], times[0], phone.xmin, phone.xmax)
         all_tracks = []
+        winner_poles = poles[0]
+        winner_bandwidths = bandwidths[0]
 
     # put everything together into VowelMeasurement object
     vm = VowelMeasurement()
@@ -1297,15 +1307,21 @@ def measureVowel(phone, word, poles, bandwidths, times, intensity, measurementPo
                    # duration of vowel (rounded to msec)
     vm.poles = selectedpoles  # original poles returned by LPC analysis
     vm.bandwidths = selectedbandwidths  # original bandwidths returned by LPC analysis
+    vm.times = times
 
     if formantPredictionMethod == 'mahalanobis' or formantPredictionMethod=='bootstrap':
-        vm.nFormants = winnerIndex + 3  # actual formant settings used in the analysis
+        vm.nFormants = winnerIndex + 6  # actual formant settings used in the analysis
         vm.remeasurepath = vm.remeasurepath + [winnerIndex]
         if phone.label[:-1] == "AY":
             vm.glide = detectMonophthong(poles[winnerIndex], measurementPoints[
                                          winnerIndex][0], measurementPoints[winnerIndex][1])
     vm.tracks = tracks  # F1 and F2 measurements at 20%, 35%, 50%, 65% and 80% of the vowel duration
     vm.all_tracks = all_tracks  # list of formant tracks for all possible formant settings (needed for remeasurement)
+    vm.winner_bandwidths = winner_bandwidths
+    vm.winner_poles = winner_poles
+    vm.all_poles = poles
+    vm.all_bandwidths = bandwidths
+    vm.times = times
 
     return vm
 
@@ -1445,10 +1461,10 @@ def outputFormantSettings(measurements, speaker, outputFile):
     # indices
     count = {}
     for code in plotnik.PLOTNIKCODES:
-        for nf in range(3, 7):
+        for nf in range(6, 13):
             count[(int(code), nf)] = 0
     for vm in measurements:
-        count[(int(vm.cd), int(vm.nFormants))] += 1
+        count[(int(vm.cd), vm.nFormants)] += 1
 
     # filename = name of the output file, but with extension "nFormants"
     outfilename = os.path.splitext(outputFile)[0] + ".nFormants"
@@ -1461,13 +1477,13 @@ def outputFormantSettings(measurements, speaker, outputFile):
     f.write('----------------------------------------\n')
     for code in plotnik.PLOTNIKCODES:
         f.write(code)
-        for nf in range(3, 7):
+        for nf in range(6, 13):
             f.write('\t' + str(count[(int(code), nf)]))
         f.write('\n')
     f.close()
 
 
-def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile, outputHeader):
+def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile, outputHeader, tracks):
     """writes measurements to file according to selected output format"""
 
     ## outputFormat = "text"
@@ -1594,6 +1610,66 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
             fw.write('\n')
         fw.close()
         print "Normalized vowel measurements output in .txt format to the file %s" % (os.path.splitext(outputFile)[0] + "_norm.txt")
+
+        if tracks:
+            with open(os.path.splitext(outputFile)[0]+".tracks", 'wb') as trackfile:
+                trackwriter = csv.writer(trackfile, delimiter = "\t", )
+                s_dict = speaker.__dict__
+                s_keys = s_dict.keys()
+                s_keys.sort()
+                speaker_attrs = [s_dict[x] for x in s_keys]
+                v_header = ['id', 'vowel', 'stress', 'pre_word', 'word', 'fol_word', 
+                                'F1_meas', 'F2_meas', 'F3_meas',
+                                'F1', 'F2', 'F3', 
+                                'B1', 'B2', 'B3', 't', 't_meas', 'dur',
+                                'plt_vclass', 'plt_manner', 'plt_place', 
+                                'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
+                                'glide', 'pre_seg', 'fol_seg', 'context', 
+                                'vowel_index', 'pre_word_trans', 'word_trans', 
+                                'fol_word_trans']
+
+                trackwriter.writerow(s_keys + v_header)
+
+                for nmeas, vm in enumerate(measurements):
+                    if len(vm.winner_poles[0]) < 2:
+                        continue
+
+                    vowel_info = [nmeas, vm.phone, vm.stress, vm.pre_word, vm.word, vm.fol_word, vm.f1, vm.f2]
+                    context_info = [str(vm.t), 
+                                 str(vm.dur), 
+                                 plotnik.plt_vowels(vm.cd), 
+                                 plotnik.plt_manner(vm.fm), 
+                                 plotnik.plt_place(vm.fp), 
+                                 plotnik.plt_voice(vm.fv), 
+                                 plotnik.plt_preseg(vm.ps), 
+                                 plotnik.plt_folseq(vm.fs), vm.style, vm.glide, 
+                                 vm.pre_seg,
+                                 vm.fol_seg, vm.context, vm.p_index, 
+                                 vm.pre_word_trans, vm.word_trans, 
+                                 vm.fol_word_trans]
+                    if vm.f3:
+                        vowel_info = vowel_info + [vm.f3]
+                    else:
+                        vowel_info = vowel_info + ['']
+                    f1_tracks = [p[0] for p in vm.winner_poles]
+                    f2_tracks = [p[1] if len(p) >= 2 else '' for p in vm.winner_poles]
+                    f3_tracks = [p[2] if len(p) >= 3 else '' for p in vm.winner_poles]
+
+                    b1_tracks = [b[0] if len(b) >= 1 else '' for b in vm.winner_bandwidths]
+                    b2_tracks = [b[1] if len(b) >= 2 else '' for b in vm.winner_bandwidths]
+                    b3_tracks = [b[2] if len(b) >= 3 else '' for b in vm.winner_bandwidths]
+                    times = vm.times[0]
+
+                    for f1, f2, f3, b1, b2, b3, t in zip(f1_tracks, f2_tracks, f3_tracks,
+                                                         b1_tracks, b2_tracks, f3_tracks,
+                                                         times):
+                        trackwriter.writerow(speaker_attrs + vowel_info + [f1, f2, f3, b1, b2, b3, t] +
+                                             context_info)
+
+
+
+
+
 
     ## outputFormat = "plotnik"
     if outputFormat in ['plotnik', 'Plotnik', 'plt', 'both']:
@@ -1853,6 +1929,8 @@ def setup_parser():
                         help = "Words to be excluded from measurement")
     parser.add_argument("--stopWordsFile",      "-t", 
                         help = "file containing words to exclude from analysis")
+    parser.add_argument("--tracks", action="store_true", 
+                        help = "Write full formant tracks.")
     parser.add_argument("--vowelSystem", choices = ['phila', 'Phila', 'PHILA', 'NorthAmerican', 'simplifiedARPABET'],
                         default="NorthAmerican",help="If set to Phila, a number of vowels will be reclassified to reflect the phonemic distinctions of the Philadelphia vowel system.")
     parser.add_argument("--verbose", "-v", action="store_true",
@@ -2126,7 +2204,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
     # assign the options to individual variables and to type conversion if
     # necessary
     global case, outputHeader, outputFormat, formantPredictionMethod, measurementMethod, measurementPointMethod, nFormants#, maxFormant
-    global nSmoothing, removeStopWords, measureUnstressed, minVowelDuration, windowSize, preEmphasis, multipleFiles, remeasurement, candidates, vowelSystem
+    global nSmoothing, removeStopWords, measureUnstressed, minVowelDuration, windowSize, preEmphasis, multipleFiles, remeasurement, candidates, vowelSystem, tracks
     case = opts.case
     outputFormat = opts.outputFormat
     outputHeader = not opts.noOutputHeader
@@ -2146,6 +2224,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
     remeasuremaxiter = opts.remeasuremaxiter
     candidates = opts.candidates
     vowelSystem = opts.vowelSystem
+    tracks = opts.tracks
     print "Processed options."
 
     # read CMU phoneset ("cmu_phoneset.txt")
@@ -2396,7 +2475,8 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
         # normalize measurements
         measurements, m_means = normalize(measurements, m_means)
         print ''
-        outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile, outputHeader)
+        outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile, outputHeader, opts.tracks)
+
         if opts.pickle:
             pi = open(os.path.splitext(outputFile)[0] + ".pickle", 'w')
             pickle.dump(measurements, pi, pickle.HIGHEST_PROTOCOL)
