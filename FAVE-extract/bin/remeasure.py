@@ -329,7 +329,7 @@ def repredictF1F2(measurements, vowelMeans, vowelCovs, vowels):
             try:
                 vm.f3 = round(bestValues[2], 1)
             except TypeError:
-                vm.F2 = ''
+                vm.f3 = ''
         else:
             vm.f3 = ''
         vm.b1 = round(math.exp(bestValues[3]), 1)
