@@ -8,8 +8,6 @@ mahalanobis
 faav
 --nSmoothing
 12
-<<<<<<< HEAD
---remeasurement
 --remeasuremaxiter
 100
 --vowelSystem
