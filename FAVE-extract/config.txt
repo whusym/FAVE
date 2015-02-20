@@ -8,7 +8,6 @@ bootstrap
 faav
 --nSmoothing
 12
---remeasurement
 --remeasuremaxiter
 100
 --vowelSystem
