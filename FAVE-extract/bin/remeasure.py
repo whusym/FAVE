@@ -291,6 +291,8 @@ def repredictF1F2(measurements, vowelMeans, vowelCovs, vowels):
         # change formant tracks to new values as well
         if not keepOldTracks:
             vm.tracks = vm.all_tracks[winnerIndex]
+            vm.winner_poles = vm.all_poles[winnerIndex]
+            vm.winner_bandwidths = vm.all_bandwidths[winnerIndex]
         remeasurements.append(vm)
 
     return remeasurements
