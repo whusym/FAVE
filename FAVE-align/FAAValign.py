@@ -56,6 +56,9 @@ Options:
 
 -n, --noprompt ("no prompt"):
 
+-t HTKTOOLSPATH, --htktoolspath=HTKTOOLSPATH
+    Specifies the path to the HTKTools directory where the HTK executable files are located.  If not specified, the user's path will be searched for the location of the executable.
+
     User is not prompted for the transcription of words not in the dictionary, or truncated words.  Unknown words are ignored by the aligner.
 """
 
@@ -63,11 +66,11 @@ Options:
 ## PROJECT "AUTOMATIC ALIGNMENT AND ANALYSIS OF LINGUISTIC CHANGE"            ##
 ## FAAValign.py                                                               ##
 ## written by Ingrid Rosenfelder                                              ##
-## last updated February 6, 2013                                              ##
 ################################################################################
 
 import os
 import sys
+import shutil
 import re
 import wave
 import optparse
@@ -76,8 +79,8 @@ import praat
 import subprocess
 import traceback
 import codecs
-import mimetypes
 import subprocess
+import string
 
 truncated = re.compile(r'\w+\-$')                       ## truncated words
 intended = re.compile(r'^\+\w+')                        ## intended word (inserted by transcribers after truncated word)
@@ -176,7 +179,7 @@ def align(wavfile, trs_input, outfile, FADIR='', SOXPATH='', HTKTOOLSPATH=''):
     ## - "tmp.wav"
     
     # create working directory  
-    os.system("mkdir ./tmp" + identifier)
+    os.mkdir("./tmp" + identifier)
     # prepare wavefile
     SR = prep_wav(wavfile, './tmp' + identifier + '/tmp' + identifier + '.wav', SOXPATH)
 
@@ -209,12 +212,12 @@ def align(wavfile, trs_input, outfile, FADIR='', SOXPATH='', HTKTOOLSPATH=''):
     except Exception, e:
         FA_error = "Error in aligning file %s:  %s." % (os.path.basename(wavfile), e)
         ## clean up temporary alignment files
-        os.system("rm -r -f ./tmp" + identifier)
+        shutil.rmtree("./tmp" + identifier)
         raise Exception, FA_error
         ##errorhandler(FA_error)
 
     ## remove tmp directory and all files        
-    os.system("rm -r -f ./tmp" + identifier)
+    shutil.rmtree("./tmp" + identifier)
     
 
 ## This function is from Jiahong Yuan's align.py
@@ -504,6 +507,23 @@ def check_transcription(w):
         
     return final_trans
 
+# substitute any 'smart' quotes in the input file with the corresponding
+# ASCII equivalents (otherwise they will be excluded as out-of-
+# vocabulary with respect to the CMU pronouncing dictionary)
+# WARNING: this function currently only works for UTF-8 input
+def replace_smart_quotes(all_input):
+  cleaned_lines = []
+  for line in all_input:
+    line = line.replace(u'\u2018', "'")
+    line = line.replace(u'\u2019', "'")
+    line = line.replace(u'\u201a', "'")
+    line = line.replace(u'\u201b', "'")
+    line = line.replace(u'\u201c', '"')
+    line = line.replace(u'\u201d', '"')
+    line = line.replace(u'\u201e', '"')
+    line = line.replace(u'\u201f', '"')
+    cleaned_lines.append(line)
+  return cleaned_lines
 
 def check_transcription_file(all_input):
     """checks the format of the input transcription file and returns a list of empty lines to be deleted from the input"""
@@ -714,6 +734,7 @@ def define_options_and_arguments():
     verbose_help = """Detailed output on status of dictionary check and alignment progress."""
     dict_help = """Specifies the name of the file containing the pronunciation dictionary.  Default file is "/model/dict"."""
     noprompt_help = """User is not prompted for the transcription of words not in the dictionary, or truncated words.  Unknown words are ignored by the aligner."""
+    htktoolspath_help = """Specifies the path to the HTKTools directory where the HTK executable files are located.  If not specified, the user's path will be searched for the location of the executable."""
 
     parser = optparse.OptionParser(usage=new_use, description=new_desc, epilog=new_ep, version=vers)
     parser.add_option('-c', '--check', help=check_help, metavar='FILENAME')                        ## required argument FILENAME
@@ -721,6 +742,7 @@ def define_options_and_arguments():
     parser.add_option('-v', '--verbose', action='store_true', default=False, help=verbose_help)
     parser.add_option('-d', '--dict', default='model/dict', help=dict_help, metavar='FILENAME')
     parser.add_option('-n', '--noprompt', action='store_true', default=False, help=noprompt_help)
+    parser.add_option('-t', '--htktoolspath', default='', help=htktoolspath_help, metavar='HTKTOOLSPATH')
 
     ## After parsing with (options, args) = parser.parse_args(), options are accessible via
     ## - string options.check (default:  None)
@@ -818,7 +840,7 @@ def get_duration(soundfile, FADIR=''):
 def is_sound(f):
     """checks whether a file is a .wav sound file"""
     
-    if re.search("\.wav$", f.lower()) and mimetypes.guess_type(f)[0] == "audio/x-wav":
+    if f.lower().endswith('.wav'):
 ## NOTE:  This is the old version of the file check using a call to 'file' via the command line
 ##    and ("audio/x-wav" in subprocess.Popen('file -bi "%s"' % f, shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
 ##                                           or "audio/x-wav" in subprocess.Popen('file -bI "%s"' % f, shell=True, stdout=subprocess.PIPE).communicate()[0].strip()):
@@ -833,7 +855,7 @@ def is_sound(f):
 def is_text(f):
     """checks whether a file is a .txt text file"""
     
-    if re.search("\.txt$", f.lower()) and mimetypes.guess_type(f)[0] == "text/plain":
+    if f.lower().endswith('.txt'):
 ## NOTE:  This is the old version of the file check using a call to 'file' via the command line
 ##    and ("text/plain" in subprocess.Popen('file -bi "%s"' % f, shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
 ##                                           or "text/plain" in subprocess.Popen('file -bI "%s"' % f, shell=True, stdout=subprocess.PIPE).communicate()[0].strip()):
@@ -1151,22 +1173,23 @@ def read_transcription_file(trsfile):
 
     try:  ## try UTF-16 encoding first
         t = codecs.open(trsfile, 'rU', encoding='utf-16')
-        lines = t.readlines()
         print "Encoding is UTF-16!"
+        lines = t.readlines()
     except UnicodeError:
         try:  ## then UTF-8...
             t = codecs.open(trsfile, 'rU', encoding='utf-8')
-            lines = t.readlines()
             print "Encoding is UTF-8!"
+            lines = t.readlines()
+            lines = replace_smart_quotes(lines)
         except UnicodeError:
             try:  ## then Windows encoding...
                 t = codecs.open(trsfile, 'rU', encoding='windows-1252')
-                lines = t.readlines()
                 print "Encoding is Windows-1252!"
+                lines = t.readlines()
             except UnicodeError:
                 t = open(trsfile, 'rU')
-                lines = t.readlines()
                 print "Encoding is ASCII!"
+                lines = t.readlines()
 
     return lines
 
@@ -1358,7 +1381,7 @@ def write_log(filename, wavfile, duration):
     f.write("Alignment statistics for file %s:\n\n" % os.path.basename(wavfile))
 
     try:
-        check_version = subprocess.Popen(["git","describe"], stdout = subprocess.PIPE)
+        check_version = subprocess.Popen(["git","describe", "--tags"], stdout = subprocess.PIPE)
         version,err = check_version.communicate()
         version = version.rstrip()
     except OSError:
@@ -1455,7 +1478,7 @@ def write_words(out, unknown):
 ################################################################################
 
 
-def FAAValign(opts, args, FADIR='', SOXPATH='', HTKTOOLSPATH=''):
+def FAAValign(opts, args, FADIR='', SOXPATH=''):
     """runs the forced aligner for the arguments given"""
 
     tempdir = os.path.join(FADIR, TEMPDIR)
@@ -1501,6 +1524,8 @@ def FAAValign(opts, args, FADIR='', SOXPATH='', HTKTOOLSPATH=''):
     count_unclear = 0
     style_tier = None
     failed_alignment = []
+
+    HTKTOOLSPATH = options.htktoolspath
 
     ## check correct format of input file; get list of transcription lines
     ## (this function skips empty annotation units -> lines to be deleted)
