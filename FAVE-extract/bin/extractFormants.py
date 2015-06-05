@@ -635,7 +635,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         if opts.verbose:
             print ''
             print "\t\t\t...word %s at %.3f is stop word." % (w.transcription, w.xmin)
-        return None
+        return "stopword"
 
     # exclude uncertain transcriptions
     if uncertain.search(w.transcription):
@@ -643,28 +643,28 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         if opts.verbose:
             print ''
             print "\t\t\t...word %s at %.3f is uncertain transcription." % (w.transcription, w.xmin)
-        return None
+        return "uncertain"
 
     for p_index, p in enumerate(w.phones):
         # skip this phone if it's not a vowel
         if not isVowel(p.label):
-            return None
+            continue
 
         # exclude overlaps
         if p.overlap:
             # count_overlaps += 1
-            return None
+            return "overlaps"
 
         # exclude last syllables of truncated words
         if w.transcription[-1] == "-" and p.fs not in ['1', '2', '4', '5']:
             # count_truncated += 1
-            return None
+            return "truncated"
 
         # skip this vowel if it doesn't have primary stress
         # and the user only wants to measure stressed vowels
         if not measureUnstressed and not hasPrimaryStress(p.label):
             # count_unstressed += 1
-            return None
+            return "unstressed"
 
         dur = round(p.xmax - p.xmin, 3)  # duration of phone
 
@@ -673,7 +673,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         # and it leaves out vowels that are reduced)
         if dur < minVowelDuration:
             # count_too_short += 1
-            return None
+            return "too_short"
 
         word_trans = " ".join([x.label for x in w.phones])
         pre_word_trans = " ".join([x.label for x in pre_w.phones])                
@@ -2356,12 +2356,22 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
             sys.stdout.write("\b" * (progressbar_width + 1))
                              # return to start of line, after '['
         ncores = multiprocessing.cpu_count()
-        measurements  = Parallel(n_jobs = ncores)(
+        output  = Parallel(n_jobs = ncores)(
                             delayed(first_measure)(pre_w, w, fol_w, opts, 
                                                   fileStem, wavFile, tgFile, 
                                                   outputFile, speaker)
                             for pre_w, w, fol_w in window(words, window_len = 3))
-        measurements = [x for x in measurements if x]
+        measurements = [x for x in output 
+                        if x.__class__.__name__ == "VowelMeasurement"]
+        count_analyzed = count_analyzed + len(measurements)
+        count_uncertain = count_uncertain + len([x for x in output if x == "uncertain"])
+        count_stopwords = count_uncertain + len([x for x in output if x == "stopwords"])
+        count_overlaps = count_uncertain + len([x for x in output if x == "overlaps"])        
+        count_truncated = count_uncertain + len([x for x in output if x == "truncated"])
+        count_unstressed = count_uncertain + len([x for x in output if x == "unstressed"])
+
+
+
 
         if remeasurement and formantPredictionMethod == 'mahalanobis':
             measurements = remeasure(measurements)
