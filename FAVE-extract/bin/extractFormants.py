@@ -614,7 +614,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
 
     # skip unclear transcriptions and silences
     if w.transcription == '' or w.transcription == "((xxxx))" or w.transcription.upper() == "SP":
-        return None
+        return [None]
 
     # convert to upper or lower case, if necessary
     w.transcription = changeCase(w.transcription, opts.case)
@@ -627,7 +627,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         if opts.verbose:
             print ''
             print "\t\t\t...no vowels in word %s at %.3f." % (w.transcription, w.xmin)
-        return None
+        return [None]
 
     # don't process this word if it's in the list of stop words
     if removeStopWords and w.transcription in opts.stopWords:
@@ -635,7 +635,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         if opts.verbose:
             print ''
             print "\t\t\t...word %s at %.3f is stop word." % (w.transcription, w.xmin)
-        return "stopword"
+        return ["stopword"]
 
     # exclude uncertain transcriptions
     if uncertain.search(w.transcription):
@@ -643,8 +643,9 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         if opts.verbose:
             print ''
             print "\t\t\t...word %s at %.3f is uncertain transcription." % (w.transcription, w.xmin)
-        return "uncertain"
+        return ["uncertain"]
 
+    vms = []
     for p_index, p in enumerate(w.phones):
         # skip this phone if it's not a vowel
         if not isVowel(p.label):
@@ -653,18 +654,16 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         # exclude overlaps
         if p.overlap:
             # count_overlaps += 1
-            return "overlaps"
-
+            continue
         # exclude last syllables of truncated words
         if w.transcription[-1] == "-" and p.fs not in ['1', '2', '4', '5']:
             # count_truncated += 1
-            return "truncated"
-
+            continue
         # skip this vowel if it doesn't have primary stress
         # and the user only wants to measure stressed vowels
-        if not measureUnstressed and not hasPrimaryStress(p.label):
+        if opts.onlyMeasureStressed and not hasPrimaryStress(p.label):
             # count_unstressed += 1
-            return "unstressed"
+            continue
 
         dur = round(p.xmax - p.xmin, 3)  # duration of phone
 
@@ -673,7 +672,7 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
         # and it leaves out vowels that are reduced)
         if dur < minVowelDuration:
             # count_too_short += 1
-            return "too_short"
+            continue
 
         word_trans = " ".join([x.label for x in w.phones])
         pre_word_trans = " ".join([x.label for x in pre_w.phones])                
@@ -751,9 +750,10 @@ def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile,
             vm.fol_word_trans = fol_word_trans
             vm.pre_word = pre_w.transcription
             vm.fol_word = fol_w.transcription
-            return(vm)
+            vms.append(vm)
             #measurements.append(vm)
             #count_analyzed += 1
+    return vms
 
 def getFormantTracks(poles, times, xmin, xmax):
     """returns formant tracks (values at 20%, 35%, 50%, 65% and 80% of the vowel duration)"""
@@ -1938,6 +1938,8 @@ def setup_parser():
                         help = "Minimum duration in seconds, below which vowels won't be analyzed.")
     parser.add_argument("--multipleFiles", action="store_true",
                         help="Interpret positional arguments as files of listed .wav, .txt and output files.")        
+    parser.add_argument("--ncpus", type = int, 
+                        default = multiprocessing.cpu_count())
     parser.add_argument("--nFormants", type=int, default=5,
                         help="Specify the order of the LPC analysis to be conducted")
     parser.add_argument("--noOutputHeader", action="store_true",
@@ -2355,20 +2357,14 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
             sys.stdout.flush()
             sys.stdout.write("\b" * (progressbar_width + 1))
                              # return to start of line, after '['
-        ncores = multiprocessing.cpu_count()
-        output  = Parallel(n_jobs = ncores)(
+        output  = Parallel(n_jobs = opts.ncpus)(
                             delayed(first_measure)(pre_w, w, fol_w, opts, 
                                                   fileStem, wavFile, tgFile, 
                                                   outputFile, speaker)
                             for pre_w, w, fol_w in window(words, window_len = 3))
-        measurements = [x for x in output 
+        measurements = [x for vmlist in output for x in vmlist 
                         if x.__class__.__name__ == "VowelMeasurement"]
         count_analyzed = count_analyzed + len(measurements)
-        count_uncertain = count_uncertain + len([x for x in output if x == "uncertain"])
-        count_stopwords = count_uncertain + len([x for x in output if x == "stopwords"])
-        count_overlaps = count_uncertain + len([x for x in output if x == "overlaps"])        
-        count_truncated = count_uncertain + len([x for x in output if x == "truncated"])
-        count_unstressed = count_uncertain + len([x for x in output if x == "unstressed"])
 
 
 
