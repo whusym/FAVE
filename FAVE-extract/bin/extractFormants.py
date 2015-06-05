@@ -86,18 +86,9 @@ from bisect import bisect_left
 from remeasure import remeasure
 from mahalanobis import mahalanobis
 
-os.chdir(os.getcwd())
+from joblib import Parallel, delayed  
+import multiprocessing
 
-uncertain = re.compile(r"\(\(([\*\+]?['\w]+\-?)\)\)")
-
-CONSONANTS = ['B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 'K', 'L', 'M',
-              'N', 'NG', 'P', 'R', 'S', 'SH', 'T', 'TH', 'V', 'W', 'Y', 'Z', 'ZH']
-VOWELS = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH',
-          'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW']
-SPECIAL = ['BR', 'CG', 'LS', 'LG', 'NS']
-
-
-#
 
 class Phone:
 
@@ -609,6 +600,160 @@ def faav(phone, formants, times, intensity):
 
     return measurementPoint
 
+def first_measure(pre_w, w, fol_w, opts, fileStem, wavFile, tgFile, 
+                  outputFile, speaker):
+
+    # if not opts.verbose:
+    #     word_iter = word_iter + 1
+    #     new_percent = math.floor((float(word_iter) / n_words) * 100)
+
+    #     for p in range(int(old_percent), int(new_percent)):
+    #         sys.stdout.write("-")
+    #         sys.stdout.flush()
+    #         old_percent = new_percent
+
+    # skip unclear transcriptions and silences
+    if w.transcription == '' or w.transcription == "((xxxx))" or w.transcription.upper() == "SP":
+        return None
+
+    # convert to upper or lower case, if necessary
+    w.transcription = changeCase(w.transcription, opts.case)
+    pre_w.transcription = changeCase(pre_w.transcription, opts.case)
+    fol_w.transcription = changeCase(fol_w.transcription, opts.case)
+
+    # if the word doesn't contain any vowels, then we won't analyze it
+    numV = getNumVowels(w)
+    if numV == 0:
+        if opts.verbose:
+            print ''
+            print "\t\t\t...no vowels in word %s at %.3f." % (w.transcription, w.xmin)
+        return None
+
+    # don't process this word if it's in the list of stop words
+    if removeStopWords and w.transcription in opts.stopWords:
+        # count_stopwords += numV
+        if opts.verbose:
+            print ''
+            print "\t\t\t...word %s at %.3f is stop word." % (w.transcription, w.xmin)
+        return None
+
+    # exclude uncertain transcriptions
+    if uncertain.search(w.transcription):
+        # count_uncertain += numV
+        if opts.verbose:
+            print ''
+            print "\t\t\t...word %s at %.3f is uncertain transcription." % (w.transcription, w.xmin)
+        return None
+
+    for p_index, p in enumerate(w.phones):
+        # skip this phone if it's not a vowel
+        if not isVowel(p.label):
+            return None
+
+        # exclude overlaps
+        if p.overlap:
+            # count_overlaps += 1
+            return None
+
+        # exclude last syllables of truncated words
+        if w.transcription[-1] == "-" and p.fs not in ['1', '2', '4', '5']:
+            # count_truncated += 1
+            return None
+
+        # skip this vowel if it doesn't have primary stress
+        # and the user only wants to measure stressed vowels
+        if not measureUnstressed and not hasPrimaryStress(p.label):
+            # count_unstressed += 1
+            return None
+
+        dur = round(p.xmax - p.xmin, 3)  # duration of phone
+
+        # don't measure this vowel if it's shorter than the minimum length threshold
+        # (this avoids an ESPS error due to there not being enough samples for the LPC,
+        # and it leaves out vowels that are reduced)
+        if dur < minVowelDuration:
+            # count_too_short += 1
+            return None
+
+        word_trans = " ".join([x.label for x in w.phones])
+        pre_word_trans = " ".join([x.label for x in pre_w.phones])                
+        fol_word_trans = " ".join([x.label for x in fol_w.phones])
+        p_context = ''
+        pre_seg = ''
+        fol_seg = ''
+
+        if len(w.phones) is 1:
+            p_context = "coextensive"
+            try:
+                pre_seg = pre_w.phones[-1].label
+            except IndexError:
+                pre_seg = ''
+            try:
+                fol_seg = fol_w.phones[0].label
+            except IndexError:
+                fol_seg = ''
+        elif p_index is 0:
+            p_context = "initial"
+            try:
+                pre_seg = pre_w.phones[-1].label
+            except IndexError:
+                pre_seg = ''
+            fol_seg = w.phones[p_index+1].label
+        elif p_index is (len(w.phones)-1):
+            p_context = "final"
+
+            pre_seg = w.phones[p_index-1].label
+            try:
+                fol_seg = fol_w.phones[0].label
+            except IndexError:
+                fol_seg = ''
+        else:
+            p_context = "internal"
+            pre_seg = w.phones[p_index-1].label
+            fol_seg = w.phones[p_index+1].label
+
+
+
+        vowelFileStem = fileStem + '_' + \
+            p.label + '_' + repr(p.xmin)   # name of sound file - ".wav" + phone label
+        vowelWavFile = vowelFileStem +'.wav'
+
+        if opts.verbose:
+            print ''
+            print "Extracting formants for vowel %s in word %s at %.3f" % (p.label, w.transcription, w.xmin)
+
+        #markTime(count_analyzed + 1, p.label + " in " + w.transcription)
+
+        # get padding for vowel in question
+        padBeg, padEnd = getPadding(p, opts.windowSize, opts.maxTime)
+        ## p = phone
+        # windowSize:  from config file or default settings
+        # maxTime = duration of sound file/TextGrid
+
+        extractPortion(wavFile, vowelWavFile, 
+                       p.xmin - padBeg, p.xmax + padEnd,
+                       opts.soundEditor)
+
+        vm = getVowelMeasurement(vowelFileStem, p, w, opts.speechSoftware,
+                                 opts.formantPredictionMethod, 
+                                 opts.measurementPointMethod, opts.nFormants, 
+                                 opts.maxFormant, opts.windowSize, 
+                                 opts.preEmphasis,
+                                 padBeg, padEnd, speaker)
+
+        if vm:  # if vowel is too short for smoothing, nothing will be returned
+            vm.context = p_context
+            vm.pre_seg = pre_seg
+            vm.fol_seg = fol_seg
+            vm.p_index = str(p_index+1)
+            vm.word_trans = word_trans
+            vm.pre_word_trans = pre_word_trans
+            vm.fol_word_trans = fol_word_trans
+            vm.pre_word = pre_w.transcription
+            vm.fol_word = fol_w.transcription
+            return(vm)
+            #measurements.append(vm)
+            #count_analyzed += 1
 
 def getFormantTracks(poles, times, xmin, xmax):
     """returns formant tracks (values at 20%, 35%, 50%, 65% and 80% of the vowel duration)"""
@@ -2125,6 +2270,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
 
     # determine what program we'll use to extract portions of the audio file
     soundEditor = getSoundEditor()
+    opts.soundEditor = soundEditor
     print "Sound editor to be used is %s." % soundEditor
 
     # if we're using the Mahalanobis distance metric for vowel formant prediction,
@@ -2193,6 +2339,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
         print 'Identified vowels in the TextGrid.'
         global maxTime
         maxTime = tg.xmax()  # duration of TextGrid/sound file
+        opts.maxTime = maxTime
         measurements = []
 
         markTime("prelim2")
@@ -2208,153 +2355,13 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
             sys.stdout.flush()
             sys.stdout.write("\b" * (progressbar_width + 1))
                              # return to start of line, after '['
-
-        for pre_w, w, fol_w in window(words, window_len = 3):
-            
-
-            if not opts.verbose:
-                word_iter = word_iter + 1
-                new_percent = math.floor((float(word_iter) / n_words) * 100)
-
-                for p in range(int(old_percent), int(new_percent)):
-                    sys.stdout.write("-")
-                    sys.stdout.flush()
-                    old_percent = new_percent
-
-            # skip unclear transcriptions and silences
-            if w.transcription == '' or w.transcription == "((xxxx))" or w.transcription.upper() == "SP":
-                continue
-
-            # convert to upper or lower case, if necessary
-            w.transcription = changeCase(w.transcription, case)
-            pre_w.transcription = changeCase(pre_w.transcription, case)
-            fol_w.transcription = changeCase(fol_w.transcription, case)
-
-            # if the word doesn't contain any vowels, then we won't analyze it
-            numV = getNumVowels(w)
-            if numV == 0:
-                if opts.verbose:
-                    print ''
-                    print "\t\t\t...no vowels in word %s at %.3f." % (w.transcription, w.xmin)
-                continue
-
-            # don't process this word if it's in the list of stop words
-            if removeStopWords and w.transcription in opts.stopWords:
-                count_stopwords += numV
-                if opts.verbose:
-                    print ''
-                    print "\t\t\t...word %s at %.3f is stop word." % (w.transcription, w.xmin)
-                continue
-
-            # exclude uncertain transcriptions
-            if uncertain.search(w.transcription):
-                count_uncertain += numV
-                if opts.verbose:
-                    print ''
-                    print "\t\t\t...word %s at %.3f is uncertain transcription." % (w.transcription, w.xmin)
-                continue
-
-            for p_index, p in enumerate(w.phones):
-                # skip this phone if it's not a vowel
-                if not isVowel(p.label):
-                    continue
-
-                # exclude overlaps
-                if p.overlap:
-                    count_overlaps += 1
-                    continue
-                # exclude last syllables of truncated words
-                if w.transcription[-1] == "-" and p.fs not in ['1', '2', '4', '5']:
-                    count_truncated += 1
-                    continue
-
-                # skip this vowel if it doesn't have primary stress
-                # and the user only wants to measure stressed vowels
-                if not measureUnstressed and not hasPrimaryStress(p.label):
-                    count_unstressed += 1
-                    continue
-
-                dur = round(p.xmax - p.xmin, 3)  # duration of phone
-
-                # don't measure this vowel if it's shorter than the minimum length threshold
-                # (this avoids an ESPS error due to there not being enough samples for the LPC,
-                # and it leaves out vowels that are reduced)
-                if dur < minVowelDuration:
-                    count_too_short += 1
-                    continue
-
-                word_trans = " ".join([x.label for x in w.phones])
-                pre_word_trans = " ".join([x.label for x in pre_w.phones])                
-                fol_word_trans = " ".join([x.label for x in fol_w.phones])
-                p_context = ''
-                pre_seg = ''
-                fol_seg = ''
-
-                if len(w.phones) is 1:
-                    p_context = "coextensive"
-                    try:
-                        pre_seg = pre_w.phones[-1].label
-                    except IndexError:
-                        pre_seg = ''
-                    try:
-                        fol_seg = fol_w.phones[0].label
-                    except IndexError:
-                        fol_seg = ''
-                elif p_index is 0:
-                    p_context = "initial"
-                    try:
-                        pre_seg = pre_w.phones[-1].label
-                    except IndexError:
-                        pre_seg = ''
-                    fol_seg = w.phones[p_index+1].label
-                elif p_index is (len(w.phones)-1):
-                    p_context = "final"
-
-                    pre_seg = w.phones[p_index-1].label
-                    try:
-                        fol_seg = fol_w.phones[0].label
-                    except IndexError:
-                        fol_seg = ''
-                else:
-                    p_context = "internal"
-                    pre_seg = w.phones[p_index-1].label
-                    fol_seg = w.phones[p_index+1].label
-
-
-
-                vowelFileStem = fileStem + '_' + \
-                    p.label  # name of sound file - ".wav" + phone label
-                vowelWavFile = vowelFileStem + '.wav'
-
-                if opts.verbose:
-                    print ''
-                    print "Extracting formants for vowel %s in word %s at %.3f" % (p.label, w.transcription, w.xmin)
-
-                markTime(count_analyzed + 1, p.label + " in " + w.transcription)
-
-                # get padding for vowel in question
-                padBeg, padEnd = getPadding(p, windowSize, maxTime)
-                ## p = phone
-                # windowSize:  from config file or default settings
-                # maxTime = duration of sound file/TextGrid
-
-                extractPortion(wavFile, vowelWavFile, p.xmin - padBeg, p.xmax + padEnd, soundEditor)
-
-                vm = getVowelMeasurement(vowelFileStem, p, w, opts.speechSoftware,
-                                         formantPredictionMethod, measurementPointMethod, nFormants, maxFormant, windowSize, preEmphasis, padBeg, padEnd, speaker)
-
-                if vm:  # if vowel is too short for smoothing, nothing will be returned
-                    vm.context = p_context
-                    vm.pre_seg = pre_seg
-                    vm.fol_seg = fol_seg
-                    vm.p_index = str(p_index+1)
-                    vm.word_trans = word_trans
-                    vm.pre_word_trans = pre_word_trans
-                    vm.fol_word_trans = fol_word_trans
-                    vm.pre_word = pre_w.transcription
-                    vm.fol_word = fol_w.transcription
-                    measurements.append(vm)
-                    count_analyzed += 1
+        ncores = multiprocessing.cpu_count()
+        measurements  = Parallel(n_jobs = ncores)(
+                            delayed(first_measure)(pre_w, w, fol_w, opts, 
+                                                  fileStem, wavFile, tgFile, 
+                                                  outputFile, speaker)
+                            for pre_w, w, fol_w in window(words, window_len = 3))
+        measurements = [x for x in measurements if x]
 
         if remeasurement and formantPredictionMethod == 'mahalanobis':
             measurements = remeasure(measurements)
@@ -2385,6 +2392,16 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
 # MAIN PROGRAM STARTS HERE                         ##
 #
 if __name__ == '__main__':
+    os.chdir(os.getcwd())
+
+    uncertain = re.compile(r"\(\(([\*\+]?['\w]+\-?)\)\)")
+
+    CONSONANTS = ['B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 'K', 'L', 'M',
+                  'N', 'NG', 'P', 'R', 'S', 'SH', 'T', 'TH', 'V', 'W', 'Y', 'Z', 'ZH']
+    VOWELS = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH',
+              'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW']
+    SPECIAL = ['BR', 'CG', 'LS', 'LG', 'NS']
+
 
     parser = setup_parser()
 
