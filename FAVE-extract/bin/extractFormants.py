@@ -632,6 +632,14 @@ def getFormantTracks(poles, times, xmin, xmax):
             # so append nothing for both of them
             tracks.append('')
             tracks.append('')
+        try:
+            F2 = poles[index][1]
+            F3 = poles[index][2]
+
+            tracks.append(F3)
+        except IndexError:
+            tracks.append('')
+
 
     return tracks
 
@@ -1383,9 +1391,9 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
                                 'plt_voice', 'plt_preseg', 'plt_folseq', 'style', 
                                 'glide', 'pre_seg', 'fol_seg', 'context', 
                                 'vowel_index', 'pre_word_trans', 'word_trans', 
-                                'fol_word_trans', 'F1@20%', 'F2@20%',
-                                'F1@35%','F2@35%', 'F1@50%', 'F2@50%', 
-                                'F1@65%','F2@65%', 'F1@80%', 'F2@80%']))
+                                'fol_word_trans', 'F1@20%', 'F2@20%', 'F3@20%',
+                                'F1@35%','F2@35%', 'F3@35%', 'F1@50%', 'F2@50%', 'F3@50%', 
+                                'F1@65%','F2@65%','F3@65%', 'F1@80%', 'F2@80%','F3@80%']))
             if formantPredictionMethod == 'mahalanobis':
                 fw.write('\t')
                 fw.write('nFormants')
