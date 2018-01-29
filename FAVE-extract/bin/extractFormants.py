@@ -130,7 +130,7 @@ class Speaker:
         self.first_name = ''
         self.last_name = ''
         self.age = ''
-        self.sex = ''
+        self.maxFormant_ = ''
         self.ethnicity = ''
         self.years_of_schooling = ''
         self.location = ''
@@ -458,7 +458,7 @@ def checkSpeechSoftware(speechSoftware):
         else:
             return 'esps'
     elif speechSoftware in ['praat', 'Praat']:
-        if not ((PRAATPATH and programExists(speechSoftware, PRAATPATH)) or (os.name == 'posix' and programExists(speechSoftware)) or (os.name == 'nt' and programExists('praatcon.exe'))):
+        if not ((PRAATPATH and programExists(speechSoftware, PRAATPATH)) or (os.name == 'posix' and programExists(speechSoftware)) or (os.name == 'nt' and programExists('praat.exe'))): # I (Joey) changed 'praatcon.exe' to 'praat.exe'
             print "ERROR: Praat was specified as the speech analysis program, but the command 'praat' ('praatcon' for Windows) is not in your path"
             sys.exit()
         else:
@@ -740,7 +740,7 @@ def getSoundEditor():
     # use sox for manipulating the files if we have it, since it's faster
     if (SOXPATH and programExists('sox', SOXPATH)) or (os.name == 'posix' and programExists('sox')) or (os.name == 'nt' and programExists('sox.exe')):
         soundEditor = 'sox'
-    elif (PRAATPATH and programExists('praat', PRAATPATH)) or (os.name == 'posix' and programExists('praat')) or (os.name == 'nt' and programExists('praatcon.exe')):
+    elif (PRAATPATH and programExists('praat', PRAATPATH)) or (os.name == 'posix' and programExists('praat')) or (os.name == 'nt' and programExists('praat.exe')):  # I (Joey) changed 'praatcon.exe' to 'praat.exe'
         soundEditor = 'praat'
     else:
         print "ERROR:  neither 'praat' ('praatcon' for Windows) nor 'sox' can be found in your path"
@@ -775,12 +775,12 @@ def getSpeakerBackground(speakername, speakernum):
     except:
         speaker.first_name = ''
         speaker.last_name = ''
-    speaker.sex = raw_input("Sex:\t\t\t")
+    speaker.maxFormant_ = raw_input("maxFormant_:\t\t\t")
     # check that speaker sex is defined - this is required for the Mahalanobis
     # method!
     if formantPredictionMethod == "mahalanobis":
-        if not speaker.sex:
-            print "ERROR!  Speaker sex must be defined for the 'mahalanobis' formantPredictionMethod!"
+        if not speaker.maxFormant_:
+            print "ERROR!  Max Formant must be defined!"
             sys.exit()
     speaker.age = raw_input("Age:\t\t\t")
 ##    speaker.city = raw_input("City:\t\tPhiladelphia")
@@ -1347,7 +1347,7 @@ def outputFormantSettings(measurements, speaker, outputFile):
     outfilename = os.path.splitext(outputFile)[0] + ".nFormants"
     f = open(outfilename, 'w')
     f.write("Formant settings for %s:\n\n" % outputFile)
-    f.write(', '.join([speaker.name, speaker.age, speaker.sex, speaker.city, speaker.state, speaker.year]))
+    f.write(', '.join([speaker.name, speaker.age, speaker.maxFormant_, speaker.city, speaker.state, speaker.year]))
     f.write('\n\n')
     f.write('\t'.join(['vowel', '3', '4', '5', '6']))
     f.write('\n')
@@ -1457,7 +1457,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
         # print header, if applicable
         if outputHeader:
             # speaker information
-            fw.write(', '.join([speaker.name, speaker.age, speaker.sex, speaker.ethnicity, speaker.years_of_schooling, speaker.location, speaker.year]))
+            fw.write(', '.join([speaker.name, speaker.age, speaker.maxFormant_, speaker.ethnicity, speaker.years_of_schooling, speaker.location, speaker.year]))
             fw.write('\n\n')
             # header
             fw.write('\t'.join(['vowel', 'stress', 'word', 'norm_F1', 'norm_F2', 't', 'beg', 'end', 'dur',
@@ -1555,7 +1555,7 @@ def outputMeasurements(outputFormat, measurements, m_means, speaker, outputFile,
         plt.first_name = speaker.first_name
         plt.last_name = speaker.last_name
         plt.age = speaker.age
-        plt.sex = speaker.sex
+        plt.maxFormant_ = speaker.maxFormant_
         plt.city = speaker.city
         plt.state = speaker.state
         plt.ethnicity = speaker.ethnicity
@@ -1720,9 +1720,7 @@ def readSpeakerFile(speakerFile):
     speaker_parser.add_argument("--first_name")
     speaker_parser.add_argument("--last_name")
     speaker_parser.add_argument("--age")
-    speaker_parser.add_argument("--sex", 
-        choices = ["m","M","male","MALE", "f","F","female","FEMALE"],
-        required = True)
+    speaker_parser.add_argument("--maxFormant_", required = True)
     speaker_parser.add_argument("--ethnicity")
     speaker_parser.add_argument("--years_of_schooling")
     speaker_parser.add_argument("--location")
@@ -2002,7 +2000,7 @@ def writeLog(filename, wavFile, maxTime, meansFile, covsFile, opts):
     f.write("- formantPredictionMethod:\t%s\n" % opts.formantPredictionMethod)
     f.write("- measurementPointMethod:\t%s\n" % opts.measurementPointMethod)
     f.write("- nFormants:\t\t\t%i\n" % opts.nFormants)
-    f.write("- maxFormant:\t\t\t%i\n" % opts.maxFormant)
+    f.write("- maxFormant:\t\t\t%s\n" % opts.maxFormant)
     f.write("- nSmoothing:\t\t\t%i\n" % opts.nSmoothing)
     f.write("- windowSize:\t\t\t%.3f\n" % opts.windowSize)
     f.write("- preEmphasis:\t\t\t%i\n" % opts.preEmphasis)
@@ -2074,7 +2072,7 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
     # set OS-specific variables
     global PRAATNAME
     if os.name == 'nt':
-        PRAATNAME = 'praatcon'
+        PRAATNAME = 'praat' # This used to be praatcon. I (Joey) changed it.
     elif os.name == 'posix':
         PRAATNAME = 'Praat'
     else:
@@ -2175,15 +2173,12 @@ def extractFormants(wavInput, tgInput, output, opts, SPATH='', PPATH=''):
             speaker = whichSpeaker(speakers)  # -> returns Speaker object
 
         # adjust maximum formant frequency to speaker sex
-        if speaker.sex in ["m", "M", "male", "MALE"]:
-            opts.maxFormant = 5000
-        elif speaker.sex in ["f", "F", "female", "FEMALE"]:
-            opts.maxFormant = 5500
+        if speaker.maxFormant_ is not None:
+            opts.maxFormant = speaker.maxFormant_
         else:
-            sys.exit("ERROR!  Speaker sex undefined.")
+            sys.exit("ERROR!  Speaker max Formant undefined.")
         global maxFormant
         maxFormant = opts.maxFormant
-
 
         markTime("prelim1")
         # extract list of words and their corresponding phones (with all
